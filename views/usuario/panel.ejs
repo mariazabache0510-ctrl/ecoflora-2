@@ -1,0 +1,20 @@
+<%- include(partial('header')) %>
+
+<div class="container my-5">
+    <div class="card shadow border-0" style="border-radius: 20px;">
+        <div class="card-header bg-primary text-white" style="border-radius: 20px 20px 0 0;"><h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>Panel del Cliente</h4></div>
+        <div class="card-body p-4">
+            <h5 class="mb-3">Bienvenido(a), <%= sesion.nombre %></h5>
+            <p class="text-muted">Desde aquí puedes gestionar tus pedidos, editar tus datos y ver tu historial de navegación.</p>
+            <div class="d-flex gap-3 flex-wrap mt-4">
+                <a href="/catalogo" class="btn btn-ecoflora"><i class="bi bi-shop me-2"></i>Ir a comprar</a>
+                <a href="/usuario/domicilios" class="btn btn-outline-ecoflora"><i class="bi bi-truck me-2"></i>Mis Pedidos</a>
+                <a href="/usuario/perfil" class="btn btn-secondary"><i class="bi bi-pencil me-2"></i>Editar mis datos</a>
+                <a href="/usuario/historial" class="btn btn-info text-white"><i class="bi bi-clock-history me-2"></i>Historial</a>
+                <a href="/logout" class="btn btn-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

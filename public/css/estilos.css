@@ -1,0 +1,151 @@
+:root {
+    --verde-oscuro: #1b4332;
+    --verde-medio: #2d6a4f;
+    --verde-claro: #52b788;
+    --verde-pastel: #d8f3dc;
+    --tierra: #bc6c25;
+    --crema: #fefae0;
+    --gris-suave: #f8f9fa;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--gris-suave);
+    color: #333;
+}
+.navbar-ecoflora {
+    background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-medio));
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+}
+.navbar-ecoflora .navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--crema) !important;
+}
+.navbar-ecoflora .nav-link {
+    color: rgba(255,255,255,0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+.navbar-ecoflora .nav-link:hover {
+    color: var(--verde-pastel) !important;
+    transform: translateY(-1px);
+}
+.hero-ecoflora {
+    background: linear-gradient(rgba(27,67,50,0.8), rgba(45,106,79,0.8)),
+                url('https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    padding: 100px 0;
+    text-align: center;
+}
+.hero-ecoflora h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+.card-planta {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+    background: white;
+}
+.card-planta:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(27,67,50,0.15);
+}
+.card-planta img {
+    height: 250px;
+    object-fit: cover;
+    transition: transform 0.5s;
+}
+.card-planta:hover img {
+    transform: scale(1.05);
+}
+.badge-categoria {
+    background-color: var(--verde-claro);
+    color: white;
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+.btn-ecoflora {
+    background-color: var(--verde-medio);
+    color: white;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s;
+}
+.btn-ecoflora:hover {
+    background-color: var(--verde-oscuro);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(27,67,50,0.3);
+}
+.btn-outline-ecoflora {
+    border: 2px solid var(--verde-medio);
+    color: var(--verde-medio);
+    border-radius: 25px;
+    font-weight: 600;
+}
+.btn-outline-ecoflora:hover {
+    background-color: var(--verde-medio);
+    color: white;
+}
+.footer-ecoflora {
+    background-color: var(--verde-oscuro);
+    color: rgba(255,255,255,0.8);
+    padding: 50px 0 20px;
+}
+.carrito-badge { position: relative; }
+.carrito-numero {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: var(--tierra);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.table-ecoflora thead {
+    background-color: var(--verde-oscuro);
+    color: white;
+}
+.form-control:focus {
+    border-color: var(--verde-claro);
+    box-shadow: 0 0 0 0.2rem rgba(82,183,136,0.25);
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+.precio-planta {
+    color: var(--verde-oscuro);
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+.detalle-imagen {
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+.cuidados-box {
+    background-color: var(--verde-pastel);
+    border-left: 4px solid var(--verde-medio);
+    border-radius: 0 10px 10px 0;
+    padding: 20px;
+}
+@media (max-width: 768px) {
+    .hero-ecoflora h1 { font-size: 2rem; }
+    .hero-ecoflora { padding: 60px 0; }
+}

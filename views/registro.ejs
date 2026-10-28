@@ -1,0 +1,35 @@
+<%- include(partial('header')) %>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0" style="border-radius: 20px;">
+                <div class="card-header bg-white border-0 text-center pt-4"><h4 class="fw-bold">Crear cuenta</h4></div>
+                <div class="card-body px-4">
+                    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+                    <% if (exito) { %><div class="alert alert-success"><%= exito %></div><% } %>
+                    <form method="POST" action="/registro">
+                        <div class="mb-3"><label class="form-label">Nombre completo *</label><input type="text" name="nombre" class="form-control" required></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Usuario *</label><input type="text" name="usuario" class="form-control" required></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Email *</label><input type="email" name="email" class="form-control" required></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Teléfono</label><input type="text" name="telefono" class="form-control"></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Ciudad</label><input type="text" name="ciudad" class="form-control"></div>
+                        </div>
+                        <div class="mb-3"><label class="form-label">Dirección</label><input type="text" name="direccion" class="form-control" placeholder="Calle, número, barrio"></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label class="form-label">Contraseña *</label><input type="password" name="password" class="form-control" required></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Confirmar *</label><input type="password" name="confirmar" class="form-control" required></div>
+                        </div>
+                        <button type="submit" class="btn btn-ecoflora w-100">Registrarme</button>
+                    </form>
+                    <div class="text-center mt-3"><small>¿Ya tienes cuenta? <a href="/login" class="text-decoration-none fw-bold" style="color: var(--verde-medio);">Ingresa aquí</a></small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

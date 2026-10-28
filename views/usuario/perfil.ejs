@@ -1,0 +1,28 @@
+<%- include(partial('header')) %>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow border-0" style="border-radius: 20px;">
+                <div class="card-header bg-primary text-white text-center" style="border-radius: 20px 20px 0 0;"><h4 class="mb-0">Modificar mis datos</h4></div>
+                <div class="card-body p-4">
+                    <% if (actualizado) { %><div class="alert alert-success">Tus datos fueron actualizados correctamente.</div><% } %>
+                    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+                    <form action="/usuario/perfil" method="POST" onsubmit="return validarPerfil();">
+                        <div class="mb-3"><label class="form-label">Nombre completo</label><input type="text" name="nombre" id="nombre" class="form-control" value="<%= datos.nombre %>" required></div>
+                        <div class="mb-3"><label class="form-label">Usuario</label><input type="text" class="form-control" value="<%= datos.usuario %>" disabled><div class="form-text">El usuario no se puede modificar.</div></div>
+                        <div class="mb-3"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control" value="<%= datos.email %>" required></div>
+                        <div class="mb-3"><label class="form-label">Teléfono</label><input type="text" name="telefono" class="form-control" value="<%= datos.telefono || '' %>"></div>
+                        <div class="mb-3"><label class="form-label">Dirección</label><input type="text" name="direccion" class="form-control" value="<%= datos.direccion || '' %>"></div>
+                        <div class="mb-3"><label class="form-label">Ciudad</label><input type="text" name="ciudad" class="form-control" value="<%= datos.ciudad || '' %>"></div>
+                        <div class="d-grid gap-2"><button type="submit" class="btn btn-primary">Guardar cambios</button><a href="/usuario" class="btn btn-secondary">Volver al panel</a></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>function validarPerfil(){let n=document.getElementById("nombre"),e=document.getElementById("email"),v=true;n.classList.remove("is-invalid");e.classList.remove("is-invalid");if(n.value.trim()===""){n.classList.add("is-invalid");v=false;}if(e.value.trim()===""){e.classList.add("is-invalid");v=false;}return v;}</script>
+
+<%- include(partial('footer')) %>

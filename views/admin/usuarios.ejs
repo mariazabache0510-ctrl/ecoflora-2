@@ -1,0 +1,40 @@
+<%- include(partial('header')) %>
+
+<div class="container my-5">
+    <div class="card shadow border-0" style="border-radius: 20px;">
+        <div class="card-header bg-dark text-white" style="border-radius: 20px 20px 0 0;">
+            <h4 class="mb-0"><i class="bi bi-people me-2"></i>Administración de Usuarios</h4>
+        </div>
+        <div class="card-body p-4">
+            <% if (eliminado) { %><div class="alert alert-success">Usuario eliminado correctamente.</div><% } %>
+            <% if (actualizado) { %><div class="alert alert-success">Usuario actualizado correctamente.</div><% } %>
+            <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark"><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Ciudad</th><th>Rol</th><th style="width: 180px;">Acciones</th></tr></thead>
+                    <tbody>
+                        <% usuarios.forEach(function(usuario) { %>
+                        <tr>
+                            <td><%= usuario.nombre %></td>
+                            <td><%= usuario.usuario %></td>
+                            <td><%= usuario.email %></td>
+                            <td><%= usuario.telefono || '' %></td>
+                            <td><%= usuario.ciudad || '' %></td>
+                            <td><span class="badge bg-<%= usuario.rol === 'admin' ? 'danger' : 'info' %>"><%= usuario.rol %></span></td>
+                            <td>
+                                <a href="/admin/usuarios/<%= usuario.id_usuario %>/editar" class="btn btn-warning btn-sm"><i class="bi bi-pencil"></i> Editar</a>
+                                <% if (usuario.id_usuario !== sesion.id_usuario) { %>
+                                <a href="/admin/usuarios/<%= usuario.id_usuario %>/eliminar" class="btn btn-danger btn-sm" onclick="return confirm('¿Seguro que deseas eliminar este usuario?');"><i class="bi bi-trash"></i> Eliminar</a>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+            <a href="/admin" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Volver al panel</a>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

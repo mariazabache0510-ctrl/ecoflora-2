@@ -1,0 +1,37 @@
+<%- include(partial('header')) %>
+
+<div class="container my-5">
+    <h2 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-truck me-2"></i>Pedidos / Domicilios</h2>
+    <div class="card shadow-sm border-0" style="border-radius: 15px;">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-ecoflora"><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acción</th></tr></thead>
+                <tbody>
+                    <% pedidos.forEach(function(pedido) { %>
+                    <tr>
+                        <td><%= pedido.id_pedido %></td>
+                        <td><%= pedido.cliente %><br><small class="text-muted"><%= pedido.email %></small></td>
+                        <td>$<%= formatPrice(pedido.total) %></td>
+                        <td><span class="badge bg-<%= COLORES_ESTADO[pedido.estado] %>"><%= pedido.estado %></span></td>
+                        <td><%= formatDate(pedido.fecha_pedido) %></td>
+                        <td>
+                            <form method="POST" action="/admin/pedidos" class="d-flex gap-2">
+                                <input type="hidden" name="id_pedido" value="<%= pedido.id_pedido %>">
+                                <select name="estado" class="form-select form-select-sm" style="width: 130px;">
+                                    <% ESTADOS.forEach(function(estado) { %>
+                                        <option value="<%= estado %>" <%= pedido.estado === estado ? 'selected' : '' %>><%= ucfirst(estado) %></option>
+                                    <% }) %>
+                                </select>
+                                <button type="submit" name="cambiar_estado" class="btn btn-sm btn-ecoflora">Actualizar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <a href="/admin" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Volver al panel</a>
+</div>
+
+<%- include(partial('footer')) %>
