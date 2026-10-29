@@ -1,0 +1,52 @@
+<%- include(partial('header')) %>
+
+<div class="container contenedor-pagina">
+    <div class="row justify-content-center">
+        <div class="col-lg-9 col-xl-8">
+            <div class="panel-cabecera reveal">
+                <span class="panel-icono"><i class="bi bi-shield-check"></i></span>
+                <div>
+                    <h1>Política de tratamiento de datos</h1>
+                    <p>Cómo cuidamos tus datos personales en EcoFlora</p>
+                </div>
+            </div>
+
+            <div class="form-tarjeta vidrio reveal politica" style="--i: 1">
+                <p class="text-muted">Esta política resume cómo EcoFlora Vivero trata los datos personales, de acuerdo con la Ley 1581 de 2012 y sus normas reglamentarias en Colombia.</p>
+
+                <h2>Responsable del tratamiento</h2>
+                <p>EcoFlora Vivero, <%= contacto.direccion %>. Correo: <a href="<%= contacto.emailHref %>"><%= contacto.email %></a>. Teléfono y WhatsApp: <%= contacto.telefono %>.</p>
+
+                <h2>Qué datos tratamos</h2>
+                <ul>
+                    <li><strong>Datos de tu cuenta y de tus domicilios:</strong> nombre, usuario, correo, teléfono, ciudad y dirección. Los usamos para tu cuenta, entregar tus pedidos y responder tus mensajes.</li>
+                    <li><strong>Datos biométricos (opcional):</strong> si activas el inicio con rostro, guardamos un código numérico de tu rostro (128 números) calculado en tu dispositivo. Está cifrado. <strong>No guardamos fotos ni video de tu rostro.</strong></li>
+                </ul>
+
+                <h2>Para qué usamos tu rostro</h2>
+                <p>Únicamente para comprobar que eres tú cuando inicias sesión con rostro. No lo usamos para publicidad, no lo vendemos y no lo compartimos con terceros.</p>
+
+                <h2>Datos sensibles: es tu decisión</h2>
+                <p>Los datos biométricos son datos sensibles. No estás obligado(a) a entregarlos ni a autorizar su tratamiento: puedes usar EcoFlora siempre con tu usuario y contraseña. Solo los guardamos si marcas de forma expresa la autorización, y guardamos la fecha y la versión del texto que aceptaste.</p>
+
+                <h2>Tus derechos</h2>
+                <ul>
+                    <li>Conocer, actualizar y rectificar tus datos.</li>
+                    <li>Pedir prueba de la autorización y revocarla.</li>
+                    <li>Pedir que suprimamos tus datos.</li>
+                    <li>Presentar quejas ante la Superintendencia de Industria y Comercio.</li>
+                </ul>
+                <p>Para borrar tu rostro entra a <a href="/rostro">Inicio con rostro</a> y pulsa "Desactivar y borrar mi rostro": se elimina de inmediato. Si eliminamos tu cuenta, también se borra tu rostro. Para cualquier otra solicitud, escríbenos a <a href="<%= contacto.emailHref %>"><%= contacto.email %></a>.</p>
+
+                <h2>Seguridad</h2>
+                <p>Tu rostro se guarda cifrado, la conexión con el sitio es segura (HTTPS) y limitamos los intentos de ingreso. Ningún sistema es infalible; por eso tu contraseña sigue siendo tu respaldo.</p>
+
+                <p class="text-muted small mb-0">Última actualización: octubre de 2026. Si cambiamos esta política, te lo informaremos y pediremos de nuevo tu autorización cuando corresponda.</p>
+            </div>
+
+            <div class="acciones-pie"><a href="javascript:history.back()" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver</a></div>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

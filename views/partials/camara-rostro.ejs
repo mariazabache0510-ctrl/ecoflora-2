@@ -1,0 +1,49 @@
+<%# Cámara circular del inicio con rostro. La usan /login y /rostro; public/js/rostro.js la controla por los atributos data-rostro-*. %>
+<div class="rostro-camara" data-rostro-camara data-estado="inactivo">
+    <div class="rostro-marco">
+        <span class="rostro-anillo" aria-hidden="true"></span>
+        <div class="rostro-circulo">
+            <video class="rostro-video" data-rostro-video playsinline muted autoplay></video>
+            <canvas class="rostro-malla" data-rostro-lienzo aria-hidden="true"></canvas>
+            <span class="rostro-escaneo" aria-hidden="true"></span>
+            <div class="rostro-reposo" data-rostro-reposo>
+                <i class="bi bi-person-bounding-box"></i>
+                <span>Tu cámara aparecerá aquí</span>
+            </div>
+            <div class="rostro-resultado rostro-ok" aria-hidden="true">
+                <svg class="rostro-flor" viewBox="0 0 120 120" focusable="false">
+                    <path class="rf-tallo" d="M60 110 C60 94 58 80 60 64" />
+                    <path class="rf-hoja rf-hoja-i" d="M60 92 C44 92 33 82 31 68 C47 68 58 78 60 92Z" />
+                    <path class="rf-hoja rf-hoja-d" d="M60 84 C76 84 87 74 89 60 C73 60 62 70 60 84Z" />
+                    <g class="rf-petalos">
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" />
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" transform="rotate(60 60 53)" />
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" transform="rotate(120 60 53)" />
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" transform="rotate(180 60 53)" />
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" transform="rotate(240 60 53)" />
+                        <ellipse class="rf-petalo" cx="60" cy="37" rx="9" ry="16" transform="rotate(300 60 53)" />
+                    </g>
+                    <circle class="rf-centro" cx="60" cy="53" r="8" />
+                </svg>
+            </div>
+            <div class="rostro-resultado rostro-fallo" aria-hidden="true">
+                <svg class="rostro-marchita" viewBox="0 0 120 120" focusable="false">
+                    <path class="rm-tallo" d="M60 108 C60 88 62 70 74 56" />
+                    <path class="rm-hoja" d="M74 56 C92 54 104 64 106 82 C90 84 78 74 74 56Z" />
+                    <path class="rm-hoja rm-hoja-2" d="M63 80 C50 80 40 90 38 102 C52 102 62 94 63 80Z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <p class="rostro-instruccion" data-rostro-instruccion role="status" aria-live="polite">Pulsa el botón para encender la cámara.</p>
+    <div class="rostro-pasos" data-rostro-pasos aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+
+    <div class="rostro-mensaje" data-rostro-mensaje role="alert" hidden>
+        <i class="bi bi-info-circle" data-rostro-mensaje-icono></i>
+        <div>
+            <strong data-rostro-mensaje-titulo></strong>
+            <p data-rostro-mensaje-texto></p>
+        </div>
+    </div>
+</div>

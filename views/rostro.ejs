@@ -1,0 +1,97 @@
+<%- include(partial('header')) %>
+
+<%
+    const esAdmin = sesion && sesion.rol === 'admin';
+    const destinoInicio = esAdmin ? '/admin' : '/';
+    const fechaActivo = desde ? new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(desde)) : '';
+%>
+
+<div class="container contenedor-pagina">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-7 col-xl-6">
+            <div class="auth-tarjeta vidrio rostro-tarjeta reveal">
+                <div class="auth-cabecera">
+                    <span class="rostro-icono-cabecera"><i class="bi bi-person-bounding-box"></i></span>
+                    <h1><%= bienvenida ? '¡Tu cuenta está lista!' : 'Inicio con rostro' %></h1>
+                    <p><%= bienvenida ? 'Si quieres, activa el inicio con rostro. Es opcional.' : 'Entra a EcoFlora mirando tu cámara. Tu contraseña siempre queda como respaldo.' %></p>
+                </div>
+
+                <% if (activado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>¡Listo! Ya puedes entrar con tu rostro desde la pantalla de ingreso.</div><% } %>
+                <% if (eliminado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Borramos tu rostro de nuestro sistema. Seguirás entrando con tu contraseña.</div><% } %>
+
+                <% if (!disponible) { %>
+                <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>El inicio con rostro todavía no está disponible en este sitio. Puedes seguir entrando con tu contraseña.</div>
+                <div class="acciones-pie justify-content-center"><a href="<%= destinoInicio %>" class="btn btn-suave">Continuar</a></div>
+                <% } else { %>
+
+                <% if (activo) { %>
+                <div class="rostro-estado-activo" data-rostro-activo>
+                    <span class="rostro-chip-activo"><i class="bi bi-check-circle-fill"></i> Activado<%= fechaActivo ? ' desde el ' + fechaActivo : '' %></span>
+                    <p class="text-muted mb-3">Ya puedes entrar con tu cámara desde la pantalla de ingreso. Si cambias de aspecto o falla seguido, vuelve a registrar tu rostro.</p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-ecoflora" data-rostro-reiniciar><i class="bi bi-arrow-repeat me-2"></i>Volver a registrar mi rostro</button>
+                        <form method="POST" action="/rostro/eliminar" onsubmit="return confirm('¿Borrar tu rostro de EcoFlora? Podrás volver a activarlo cuando quieras.');">
+                            <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-trash3 me-2"></i>Desactivar y borrar mi rostro</button>
+                        </form>
+                    </div>
+                </div>
+                <% } %>
+
+                <div data-rostro-registro data-bienvenida="<%= bienvenida ? '1' : '0' %>" data-destino="<%= bienvenida ? destinoInicio : '/rostro?activado=1' %>"<%- activo ? ' hidden' : '' %>>
+
+                    <%# Paso 1: autorización de datos biométricos (Ley 1581 de 2012) y contraseña %>
+                    <form data-rostro-autorizar novalidate>
+                        <div class="rostro-autorizacion">
+                            <h2><i class="bi bi-shield-check"></i> Autorización de datos biométricos</h2>
+                            <div class="rostro-texto-legal" tabindex="0" aria-label="Texto de la autorización">
+                                <p><strong>Responsable:</strong> EcoFlora Vivero, <%= contacto.direccion %>. Contacto: <a href="<%= contacto.emailHref %>"><%= contacto.email %></a> · <%= contacto.telefono %>.</p>
+                                <p><strong>Qué guardamos:</strong> con tu cámara calculamos un código numérico de tu rostro (128 números) y lo guardamos <em>cifrado</em>. <strong>No guardamos fotos ni video.</strong></p>
+                                <p><strong>Para qué:</strong> solo para comprobar que eres tú cuando entras con rostro. No lo usamos para publicidad ni lo compartimos con terceros.</p>
+                                <p><strong>Es voluntario:</strong> los datos biométricos son datos sensibles (Ley 1581 de 2012). No estás obligado(a) a darlos: siempre podrás entrar con tu contraseña.</p>
+                                <p><strong>Tus derechos:</strong> conocer, actualizar, rectificar y suprimir tus datos, y revocar esta autorización cuando quieras. Puedes borrar tu rostro con el botón "Desactivar" de esta página o escribiéndonos. Más detalles en la <a href="/privacidad" target="_blank" rel="noopener">política de tratamiento de datos</a>.</p>
+                            </div>
+                            <label class="rostro-casilla" for="rostro-consentimiento">
+                                <input type="checkbox" id="rostro-consentimiento" data-rostro-consentimiento>
+                                <span>He leído y autorizo el tratamiento de mis datos biométricos para iniciar sesión con rostro.</span>
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="rostro-clave">Confirma tu contraseña</label>
+                            <div class="campo con-ojo">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="rostro-clave" class="form-control" autocomplete="current-password" data-rostro-clave>
+                                <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                            </div>
+                            <div class="form-text">Lo pedimos para asegurarnos de que eres tú quien activa el rostro.</div>
+                        </div>
+                        <div class="rostro-aviso-form" data-rostro-error-form role="alert" hidden></div>
+                        <button type="submit" class="btn btn-ecoflora btn-lg w-100" data-rostro-continuar disabled><i class="bi bi-arrow-right-circle me-2"></i>Continuar</button>
+                    </form>
+
+                    <%# Paso 2: cámara, prueba de vida y captura %>
+                    <div data-rostro-paso-camara hidden>
+                        <%- include(partial('camara-rostro')) %>
+                        <div class="rostro-botones">
+                            <button type="button" class="btn btn-ecoflora btn-lg" data-rostro-iniciar><i class="bi bi-camera-video me-2"></i>Encender cámara</button>
+                            <button type="button" class="btn btn-suave" data-rostro-cancelar>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <% if (bienvenida) { %>
+                <p class="auth-pie"><a href="<%= destinoInicio %>">Omitir por ahora</a></p>
+                <% } else { %>
+                <p class="auth-pie"><a href="<%= esAdmin ? '/admin' : '/usuario/perfil' %>">Volver</a> · <a href="/privacidad">Política de datos</a></p>
+                <% } %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<% if (disponible) { %>
+<script src="/js/rostro-vida.js"></script>
+<script src="/js/rostro.js"></script>
+<% } %>
+
+<%- include(partial('footer')) %>

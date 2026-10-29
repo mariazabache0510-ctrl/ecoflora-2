@@ -139,6 +139,20 @@ const contactoSchema = new mongoose.Schema(
   { versionKey: false, collection: 'contactos' }
 );
 
+// Rostro para iniciar sesión. Solo se guardan los descriptores (128 números) CIFRADOS: nunca fotos.
+const rostroUsuarioSchema = new mongoose.Schema(
+  {
+    id_usuario: { type: Number, required: true, unique: true },
+    descriptores: { type: [String], default: [] },
+    algoritmo: { type: String, default: 'face-api-128' },
+    consentimiento_fecha: { type: Date, required: true },
+    consentimiento_version: { type: String, required: true },
+    fecha_registro: { type: Date, default: Date.now },
+    ultimo_uso: { type: Date, default: null }
+  },
+  { versionKey: false, collection: 'rostros_usuarios' }
+);
+
 const Counter = mongoose.model('Counter', counterSchema);
 const Meta = mongoose.model('Meta', metaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
@@ -148,6 +162,7 @@ const Carrito = mongoose.model('Carrito', carritoSchema);
 const Pedido = mongoose.model('Pedido', pedidoSchema);
 const Historial = mongoose.model('Historial', historialSchema);
 const Contacto = mongoose.model('Contacto', contactoSchema);
+const RostroUsuario = mongoose.model('RostroUsuario', rostroUsuarioSchema);
 
 async function nextId(name, session) {
   const options = { new: true, upsert: true, setDefaultsOnInsert: true };
@@ -176,6 +191,7 @@ module.exports = {
   Pedido,
   Historial,
   Contacto,
+  RostroUsuario,
   nextId,
   syncCounter
 };

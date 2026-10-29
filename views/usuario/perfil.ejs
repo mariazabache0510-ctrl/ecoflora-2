@@ -48,6 +48,23 @@
                     </div>
                 </form>
             </div>
+
+            <div class="rostro-aviso vidrio reveal" style="--i: 2">
+                <span class="rostro-aviso-icono"><i class="bi bi-person-bounding-box"></i></span>
+                <div class="rostro-aviso-texto">
+                    <strong>Inicio de sesión con rostro</strong>
+                    <% if (!rostroDisponible) { %>
+                        <small>Todavía no está disponible en este sitio.</small>
+                    <% } else if (rostroActivo) { %>
+                        <small><i class="bi bi-check-circle-fill"></i> Activado. Tu contraseña sigue funcionando como respaldo.</small>
+                    <% } else { %>
+                        <small>Entra con tu cámara, sin escribir la contraseña. Es opcional.</small>
+                    <% } %>
+                </div>
+                <% if (rostroDisponible) { %>
+                <a href="/rostro" class="btn btn-ecoflora btn-sm"><%= rostroActivo ? 'Administrar' : 'Activar inicio con rostro' %></a>
+                <% } %>
+            </div>
         </div>
     </div>
 </div>

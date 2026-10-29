@@ -1,6 +1,9 @@
-const { Usuario, Categoria, Planta, Pedido, Historial, Contacto, Carrito, nextId } = require('./models');
+const { Usuario, Categoria, Planta, Pedido, Historial, Contacto, Carrito, RostroUsuario, nextId } = require('./models');
 const { hashPassword, verifyPassword } = require('./passwords');
-const { getCartItems, addItem, updateQuantities, removeItem, mergeGuestCart } = require('./cart');
+const { getCartItems, addItem, updateQuantities, removeItem } = require('./cart');
+const { iniciarSesion, destinoTrasLogin } = require('./sesion');
+const rostro = require('./rostro');
+const { registrarRutasRostro } = require('./rutas-rostro');
 const { placeOrder, StockError } = require('./orders');
 const { escapeRegex, ESTADOS } = require('./helpers');
 const { enviarMensajeContacto, enviarAvisoDomicilio } = require('./mailer');
@@ -183,12 +186,8 @@ function registerRoutes(app) {
       if (!user) return res.render('login', { error: 'Usuario no encontrado.' });
       const ok = await verifyPassword(password, user.password);
       if (!ok) return res.render('login', { error: 'Contraseña incorrecta.' });
-      req.session.id_usuario = user.id_usuario;
-      req.session.nombre = user.nombre;
-      req.session.usuario = user.usuario;
-      req.session.rol = user.rol;
-      await mergeGuestCart(req, user.id_usuario);
-      const destino = user.rol === 'admin' ? '/admin' : '/';
+      await iniciarSesion(req, user);
+      const destino = destinoTrasLogin(user);
       return req.session.save(() => res.redirect(destino));
     } catch (error) {
       return next(error);
@@ -223,7 +222,7 @@ function registerRoutes(app) {
         return res.render('registro', { error: 'El usuario o email ya están registrados.', exito: '' });
       }
       const id = await nextId('usuarios');
-      await Usuario.create({
+      const nuevo = await Usuario.create({
         id_usuario: id,
         nombre,
         usuario,
@@ -234,7 +233,10 @@ function registerRoutes(app) {
         ciudad,
         rol: 'cliente'
       });
-      return res.render('registro', { error: '', exito: 'Registro exitoso. Ahora puedes iniciar sesión.' });
+      // La cuenta nueva entra de una vez y se le ofrece (opcional) activar el inicio con rostro.
+      await iniciarSesion(req, nuevo);
+      const destino = rostro.disponible() ? '/rostro?bienvenida=1' : '/usuario';
+      return req.session.save(() => res.redirect(destino));
     } catch (error) {
       if (error.code === 11000) {
         return res.render('registro', { error: 'El usuario o email ya están registrados.', exito: '' });
@@ -355,8 +357,11 @@ function registerRoutes(app) {
   app.get('/usuario/perfil', requireCliente, async (req, res, next) => {
     try {
       const datos = await Usuario.findOne({ id_usuario: req.session.id_usuario }).lean();
+      const registroRostro = await RostroUsuario.findOne({ id_usuario: req.session.id_usuario }, { _id: 1 }).lean();
       res.render('usuario/perfil', {
         datos,
+        rostroDisponible: rostro.disponible(),
+        rostroActivo: Boolean(registroRostro),
         actualizado: req.query.actualizado === '1',
         error: typeof req.query.error === 'string' ? req.query.error : ''
       });
@@ -480,6 +485,7 @@ function registerRoutes(app) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('No puedes eliminar tu propia cuenta'));
       }
       await Carrito.deleteOne({ id_usuario: id });
+      await RostroUsuario.deleteOne({ id_usuario: id });
       await Historial.deleteMany({ id_usuario: id });
       await Pedido.deleteMany({ id_usuario: id });
       const result = await Usuario.deleteOne({ id_usuario: id });
@@ -619,6 +625,9 @@ function registerRoutes(app) {
       return next(error);
     }
   });
+
+  // Inicio de sesión con rostro (activar, desactivar y entrar).
+  registrarRutasRostro(app);
 }
 
 // Avisa por correo al administrador que un cliente pidió un domicilio. Va por detrás: el cliente no espera

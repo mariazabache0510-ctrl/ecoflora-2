@@ -20,7 +20,7 @@
     const esAdmin = sesion && sesion.rol === 'admin';
     const inicial = sesion ? String(sesion.nombre || '?').trim().charAt(0).toUpperCase() : '';
     const primerNombre = sesion ? String(sesion.nombre || '').trim().split(' ')[0] : '';
-    const enCuenta = sesion && (ruta.indexOf('/admin') === 0 || ruta.indexOf('/usuario') === 0);
+    const enCuenta = sesion && (ruta.indexOf('/admin') === 0 || ruta.indexOf('/usuario') === 0 || ruta.indexOf('/rostro') === 0);
 %>
 <body>
 
@@ -72,11 +72,13 @@
                                         <li><a class="dropdown-item<%= activo('/admin/pedidos') ? ' active' : '' %>" href="/admin/pedidos"><i class="bi bi-truck"></i>Pedidos</a></li>
                                         <li><a class="dropdown-item<%= activo('/admin/inventario') ? ' active' : '' %>" href="/admin/inventario"><i class="bi bi-boxes"></i>Inventario</a></li>
                                         <li><a class="dropdown-item<%= activo('/admin/mensajes') ? ' active' : '' %>" href="/admin/mensajes"><i class="bi bi-chat-dots"></i>Mensajes</a></li>
+                                        <li><a class="dropdown-item<%= activo('/rostro') ? ' active' : '' %>" href="/rostro"><i class="bi bi-person-bounding-box"></i>Inicio con rostro</a></li>
                                     <% } else { %>
                                         <li><a class="dropdown-item<%= activo('/usuario', true) ? ' active' : '' %>" href="/usuario"><i class="bi bi-person"></i>Mi Panel</a></li>
                                         <li><a class="dropdown-item<%= activo('/usuario/domicilios') ? ' active' : '' %>" href="/usuario/domicilios"><i class="bi bi-truck"></i>Mis Pedidos</a></li>
                                         <li><a class="dropdown-item<%= activo('/usuario/historial') ? ' active' : '' %>" href="/usuario/historial"><i class="bi bi-clock-history"></i>Historial</a></li>
                                         <li><a class="dropdown-item<%= activo('/usuario/perfil') ? ' active' : '' %>" href="/usuario/perfil"><i class="bi bi-pencil-square"></i>Mis datos</a></li>
+                                        <li><a class="dropdown-item<%= activo('/rostro') ? ' active' : '' %>" href="/rostro"><i class="bi bi-person-bounding-box"></i>Inicio con rostro</a></li>
                                     <% } %>
                                 </ul>
                             </li>

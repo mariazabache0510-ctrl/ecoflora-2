@@ -11,6 +11,7 @@
     "import": "node scripts/import-sql.js"
   },
   "dependencies": {
+    "@vladmandic/face-api": "1.7.15",
     "bcryptjs": "^2.4.3",
     "connect-mongo": "^5.1.0",
     "dotenv": "^16.4.7",

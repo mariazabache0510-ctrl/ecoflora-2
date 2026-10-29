@@ -23,6 +23,17 @@ const {
 
 const viewsDir = path.join(__dirname, '..', 'views');
 
+// Modelos de @vladmandic/face-api que usa el inicio de sesión con rostro (detector pequeño,
+// 68 puntos de la cara y reconocimiento). Los demás modelos de la librería no se publican.
+const MODELOS_ROSTRO = new Set([
+  'tiny_face_detector_model-weights_manifest.json',
+  'tiny_face_detector_model.bin',
+  'face_landmark_68_model-weights_manifest.json',
+  'face_landmark_68_model.bin',
+  'face_recognition_model-weights_manifest.json',
+  'face_recognition_model.bin'
+]);
+
 function shouldRecord(req) {
   if (req.method !== 'GET') return false;
   if (req.get('x-requested-with')) return false;
@@ -77,6 +88,21 @@ function createApp() {
   });
 
   app.use(express.urlencoded({ extended: true }));
+
+  // Reconocimiento facial: la librería y sus 3 modelos salen de node_modules (no hay que descargar
+  // nada a mano). Solo se sirven los archivos necesarios y quedan en la caché del navegador.
+  const carpetaFaceApi = path.dirname(require.resolve('@vladmandic/face-api/package.json'));
+  const CACHE_LARGA = 'public, max-age=2592000';
+  app.get('/vendor/face-api/face-api.js', (req, res) => {
+    res.setHeader('Cache-Control', CACHE_LARGA);
+    res.sendFile(path.join(carpetaFaceApi, 'dist', 'face-api.js'));
+  });
+  app.get('/modelos/rostro/:archivo', (req, res, next) => {
+    if (!MODELOS_ROSTRO.has(req.params.archivo)) return next();
+    res.setHeader('Cache-Control', CACHE_LARGA);
+    return res.sendFile(path.join(carpetaFaceApi, 'model', req.params.archivo));
+  });
+
   app.use(express.static(path.join(__dirname, '..', 'public'), {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path.sep}img${path.sep}`)) {

@@ -17,3 +17,7 @@ services:
         sync: false
       - key: CONTACT_TO_EMAIL
         value: mariazabache0510@gmail.com
+      - key: FACE_ENCRYPTION_KEY
+        sync: false
+      - key: FACE_MATCH_THRESHOLD
+        value: "0.5"

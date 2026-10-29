@@ -119,7 +119,16 @@ async function main() {
     password: 'clave123',
     confirmar: 'clave123'
   });
-  assert(registro.text.includes('Registro exitoso'), 'registro de cliente');
+  // Al crear la cuenta la persona queda dentro: va a activar su rostro (si está disponible) o a su panel.
+  assert(
+    registro.status === 302 && ['/rostro?bienvenida=1', '/usuario'].includes(registro.location),
+    'registro de cliente entra directo y propone activar el rostro'
+  );
+  const trasRegistro = await guest.request('GET', '/usuario/perfil');
+  assert(trasRegistro.status === 200 && trasRegistro.text.includes('clienteprueba@ecoflora.com'), 'tras registrarse la sesión ya está iniciada');
+  await guest.request('GET', '/logout');
+  const sinSesion = await guest.request('GET', '/usuario/perfil');
+  assert(sinSesion.status === 302, 'cerrar sesión funciona');
 
   const duplicado = await guest.request('POST', '/registro', {
     nombre: 'Otro',
