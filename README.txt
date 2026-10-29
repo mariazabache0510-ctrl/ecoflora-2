@@ -59,3 +59,18 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    notas, plantas y total) y un botón para escribirle por WhatsApp. Usa la
    misma RESEND_API_KEY. El pedido y sus datos de entrega también se ven en
    /admin/pedidos; si el aviso falla, esa fila dice "Aviso no enviado".
+
+7. INVENTARIO (STOCK)
+   En Admin > Inventario (/admin/inventario) se ve cada planta con sus
+   unidades disponibles. Cada tarjeta permite:
+   - Añadir al stock: llegaron más plantas (19 + 5 = 24).
+   - Quitar del stock: plantas dañadas o vendidas por fuera (no baja de 0).
+   - Dejar en una cantidad: corregir el conteo exacto.
+   Antes de guardar, la tarjeta muestra cuánto quedará. El stock también baja
+   solo cuando un cliente confirma un domicilio. Hay buscador y filtros de
+   "Poco stock" (5 unidades o menos) y "Agotadas"; el panel de admin avisa
+   cuántas plantas hay por reponer.
+   Si cancelas un pedido, sus unidades no vuelven solas: súmalas aquí.
+   Si cambias data/ecoflora_full.sql, el catálogo se actualiza pero las
+   plantas que ya existían conservan el stock actual (se gestiona desde el
+   panel, no desde el SQL).

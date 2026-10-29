@@ -10,6 +10,10 @@ const { crearLimitador } = require('./limite');
 const limiteContacto = crearLimitador({ max: 5, ventanaMs: 10 * 60 * 1000 });
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+// Con 5 unidades o menos se considera "poco stock" (igual que en las tarjetas del catálogo).
+const STOCK_BAJO = 5;
+const LIMITE_STOCK = 100000;
+
 const collation = { locale: 'es', strength: 2 };
 
 function requireAdmin(req, res, next) {
@@ -391,14 +395,15 @@ function registerRoutes(app) {
 
   app.get('/admin', requireAdmin, async (req, res, next) => {
     try {
-      const [totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer] = await Promise.all([
+      const [totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer, stockBajo] = await Promise.all([
         Planta.countDocuments(),
         Pedido.countDocuments(),
         Usuario.countDocuments({ rol: 'cliente' }),
         Pedido.countDocuments({ estado: 'pendiente' }),
-        Contacto.countDocuments({ leido: { $ne: true } })
+        Contacto.countDocuments({ leido: { $ne: true } }),
+        Planta.countDocuments({ stock: { $lte: STOCK_BAJO } })
       ]);
-      res.render('admin/panel', { totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer });
+      res.render('admin/panel', { totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer, stockBajo });
     } catch (error) {
       next(error);
     }
@@ -538,6 +543,80 @@ function registerRoutes(app) {
       res.redirect('/admin/mensajes?eliminado=1');
     } catch (error) {
       next(error);
+    }
+  });
+
+  // Inventario: añadir, quitar o corregir el stock de cada planta.
+  app.get('/admin/inventario', requireAdmin, async (req, res, next) => {
+    try {
+      const todas = await Planta.find().sort({ nombre: 1 }).collation(collation).lean();
+      const { plantas } = await withCategoryNames(todas);
+      const aviso = req.session.aviso_inventario || null;
+      delete req.session.aviso_inventario;
+      const resumen = {
+        total: plantas.length,
+        agotadas: plantas.filter((planta) => planta.stock <= 0).length,
+        poco: plantas.filter((planta) => planta.stock > 0 && planta.stock <= STOCK_BAJO).length,
+        unidades: plantas.reduce((suma, planta) => suma + Math.max(0, planta.stock), 0)
+      };
+      res.render('admin/inventario', { plantas, aviso, resumen, STOCK_BAJO });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/admin/inventario/:id', requireAdmin, async (req, res, next) => {
+    try {
+      const id = parseInt(req.params.id, 10) || 0;
+      const volver = (tipo, texto) => {
+        req.session.aviso_inventario = { tipo, texto, id };
+        return req.session.save(() => res.redirect(`/admin/inventario#planta-${id}`));
+      };
+
+      const planta = await Planta.findOne({ id_planta: id }).lean();
+      if (!planta) return volver('error', 'No encontramos esa planta.');
+
+      const accion = String(req.body.accion || '');
+      if (!['agregar', 'quitar', 'fijar'].includes(accion)) return volver('error', 'Elige qué quieres hacer con el stock.');
+      const texto = String(req.body.cantidad ?? '').trim();
+      if (!/^\d{1,7}$/.test(texto)) return volver('error', 'Escribe una cantidad válida: un número entero, sin decimales ni signos.');
+      const cantidad = Number(texto);
+      if (accion !== 'fijar' && cantidad < 1) return volver('error', 'La cantidad debe ser de al menos 1 unidad.');
+      if (cantidad > LIMITE_STOCK) return volver('error', `La cantidad máxima por planta es de ${LIMITE_STOCK} unidades.`);
+
+      let antes;
+      let despues;
+      if (accion === 'agregar') {
+        // Operaciones atómicas: si entra un pedido al mismo tiempo, no se pierde ninguna unidad.
+        const previo = await Planta.findOneAndUpdate(
+          { id_planta: id, stock: { $lte: LIMITE_STOCK - cantidad } },
+          { $inc: { stock: cantidad } },
+          { new: false }
+        ).lean();
+        if (!previo) return volver('error', `Con ${cantidad} unidades más, ${planta.nombre} superaría el máximo de ${LIMITE_STOCK}.`);
+        antes = previo.stock;
+        despues = antes + cantidad;
+        return volver('ok', `Se añadieron ${cantidad} unidad${cantidad === 1 ? '' : 'es'} a ${planta.nombre}. Pasó de ${antes} a ${despues} disponibles.`);
+      }
+      if (accion === 'quitar') {
+        const previo = await Planta.findOneAndUpdate(
+          { id_planta: id, stock: { $gte: cantidad } },
+          { $inc: { stock: -cantidad } },
+          { new: false }
+        ).lean();
+        if (!previo) {
+          const actual = await Planta.findOne({ id_planta: id }).lean();
+          return volver('error', `No puedes quitar ${cantidad} unidades de ${planta.nombre}: solo hay ${actual ? Math.max(0, actual.stock) : 0}.`);
+        }
+        antes = previo.stock;
+        despues = antes - cantidad;
+        return volver('ok', `Se quitaron ${cantidad} unidad${cantidad === 1 ? '' : 'es'} de ${planta.nombre}. Pasó de ${antes} a ${despues} disponibles.`);
+      }
+      const previo = await Planta.findOneAndUpdate({ id_planta: id }, { $set: { stock: cantidad } }, { new: false }).lean();
+      antes = previo ? previo.stock : planta.stock;
+      return volver('ok', `El stock de ${planta.nombre} quedó en ${cantidad} unidad${cantidad === 1 ? '' : 'es'} (antes: ${antes}).`);
+    } catch (error) {
+      return next(error);
     }
   });
 }

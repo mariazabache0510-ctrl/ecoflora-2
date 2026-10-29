@@ -265,6 +265,63 @@ async function main() {
   const pedidos2 = await admin.request('GET', '/admin/pedidos');
   assert(pedidos2.text.includes('estado estado-entregado') && !pedidos2.text.includes('estado estado-pendiente'), 'el admin cambia el estado');
 
+  // ----- Inventario: el stock de la Monstera (id 1) quedó en 14 tras el domicilio de prueba -----
+  assert(panel.text.includes('/admin/inventario') && panel.text.includes('Inventario / Stock'), 'el panel enlaza al inventario');
+  const stockDe = async (id) => {
+    const ficha = await guest.request('GET', '/planta/' + id);
+    const coincidencia = ficha.text.match(/Stock: (\d+)/);
+    return coincidencia ? Number(coincidencia[1]) : null;
+  };
+  const inventario = await admin.request('GET', '/admin/inventario');
+  assert(inventario.status === 200 && inventario.text.includes('Inventario') && inventario.text.includes('Añadir al stock'), 'el admin abre el inventario');
+  assert((inventario.text.match(/data-inv-form/g) || []).length === 22, 'el inventario lista las 22 plantas con su formulario');
+  assert(inventario.text.includes('data-inv-buscar') && inventario.text.includes('data-inv-filtro="poco"'), 'el inventario tiene buscador y filtros');
+  assert(inventario.text.includes('data-icono="bi-plus-circle"') && inventario.text.includes('action="/admin/inventario/1"'), 'el menú de operaciones trae iconos y cada planta tiene su formulario');
+  assert((await stockDe(1)) === 14, 'antes de reponer la Monstera tiene 14 unidades');
+
+  const reposicion = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad: '5' });
+  assert(reposicion.text.includes('Se añadieron 5 unidades a Monstera deliciosa') && reposicion.text.includes('de 14 a 19'), 'el admin añade 5 unidades y ve el resultado');
+  assert(reposicion.text.includes('inv-tarjeta vidrio reveal recien'), 'la planta actualizada queda resaltada');
+  assert((await stockDe(1)) === 19, 'la ficha pública muestra 19 unidades tras añadir 5 a 14');
+  const recarga = await admin.request('GET', '/admin/inventario');
+  assert(!recarga.text.includes('Se añadieron 5 unidades'), 'el aviso se muestra una sola vez');
+
+  const baja = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'quitar', cantidad: '3' });
+  assert(baja.text.includes('Se quitaron 3 unidades de Monstera deliciosa') && (await stockDe(1)) === 16, 'el admin quita 3 unidades (19 → 16)');
+  const exceso = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'quitar', cantidad: '99' });
+  assert(exceso.text.includes('No puedes quitar 99 unidades de Monstera deliciosa: solo hay 16') && (await stockDe(1)) === 16, 'no deja quitar más unidades de las que hay');
+  const fijado = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'fijar', cantidad: '20' });
+  assert(fijado.text.includes('quedó en 20 unidades (antes: 16)') && (await stockDe(1)) === 20, 'el admin corrige el conteo exacto (16 → 20)');
+  const agotar = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'fijar', cantidad: '0' });
+  assert(agotar.text.includes('quedó en 0 unidades') && agotar.text.includes('inv-agotada'), 'el admin puede dejar una planta agotada');
+  const fichaAgotada = await guest.request('GET', '/planta/1');
+  assert(fichaAgotada.text.includes('agotada por ahora') && !fichaAgotada.text.includes('formulario-compra'), 'una planta en 0 se muestra agotada al público');
+  const repuesta = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad: '15' });
+  assert(repuesta.text.includes('de 0 a 15') && (await stockDe(1)) === 15, 'al reponer una planta agotada vuelve a venderse');
+  const fichaRepuesta = await guest.request('GET', '/planta/1');
+  assert(fichaRepuesta.text.includes('formulario-compra'), 'la planta repuesta vuelve a mostrar el botón de compra');
+
+  for (const [cantidad, descripcion] of [['abc', 'texto'], ['-2', 'negativo'], ['2.5', 'decimal'], ['', 'vacío'], ['0', 'cero al añadir']]) {
+    const mala = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad });
+    assert(mala.text.includes('inv-resultado-error') && (await stockDe(1)) === 15, 'el inventario rechaza una cantidad ' + descripcion);
+  }
+  const accionMala = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'borrar', cantidad: '1' });
+  assert(accionMala.text.includes('Elige qué quieres hacer') && (await stockDe(1)) === 15, 'el inventario rechaza una operación desconocida');
+  const sinPlanta = await follow(admin, 'POST', '/admin/inventario/9999', { accion: 'agregar', cantidad: '1' });
+  assert(sinPlanta.text.includes('No encontramos esa planta') && sinPlanta.text.includes('alert-danger'), 'el inventario avisa si la planta no existe');
+  const enorme = await follow(admin, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad: '99999' });
+  assert(enorme.text.includes('superaría el máximo') && (await stockDe(1)) === 15, 'el inventario pone un tope al stock');
+
+  // `guest` ya inició sesión como cliente: no debe poder tocar el inventario.
+  const clienteIntento = await follow(guest, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad: '50' });
+  const clienteVista = await follow(guest, 'GET', '/admin/inventario');
+  assert(clienteIntento.text.includes('Acceso no autorizado') && !clienteVista.text.includes('data-inv-form'), 'un cliente no puede ver ni cambiar el inventario');
+  const visitante = createClient();
+  const visitanteIntento = await follow(visitante, 'POST', '/admin/inventario/1', { accion: 'agregar', cantidad: '50' });
+  const visitanteVista = await follow(visitante, 'GET', '/admin/inventario');
+  assert(!visitanteIntento.text.includes('Se añadieron') && !visitanteVista.text.includes('data-inv-form'), 'un visitante no entra al inventario');
+  assert((await stockDe(1)) === 15, 'los intentos sin permiso no modificaron el stock');
+
   const usuarios = await admin.request('GET', '/admin/usuarios');
   assert(usuarios.text.includes('clienteprueba'), 'el admin lista clientes');
   const idUsuario = usuarios.text.match(/\/admin\/usuarios\/(\d+)\/editar/);

@@ -725,6 +725,44 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 .mensaje-acciones form { margin: 0; }
 .mensaje-acciones .btn { padding: 0.5rem 1.1rem; font-size: 0.85rem; }
 .mensaje-tarjeta .estado { text-transform: none; }
+
+/* ---------- Inventario (admin) ---------- */
+button.chip-filtro { font-family: inherit; cursor: pointer; }
+.chip-cuenta { display: inline-grid; place-items: center; min-width: 1.45rem; height: 1.45rem; padding: 0 0.4rem; border-radius: 999px; font-size: 0.74rem; font-weight: 700; background: rgba(45, 106, 79, 0.12); color: var(--verde-oscuro); transition: background 0.3s, color 0.3s; }
+.chip-filtro.activo .chip-cuenta { background: rgba(255, 255, 255, 0.28); color: #fff; }
+.inv-tarjeta { position: relative; height: 100%; padding: 1.1rem 1.15rem 1.15rem; border-radius: var(--radio); border: 2px solid transparent; scroll-margin-top: calc(var(--nav-alto) + 24px); transition: border-color 0.4s, box-shadow 0.4s; }
+.inv-tarjeta:hover { box-shadow: var(--sombra-media); }
+.inv-cabecera { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1rem; }
+.inv-foto { flex: none; width: 64px; height: 64px; border-radius: 18px; object-fit: cover; background: var(--verde-pastel); box-shadow: var(--sombra-suave); }
+.inv-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.inv-titulo strong { font-size: 1.05rem; line-height: 1.25; color: var(--verde-oscuro); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-titulo small { color: var(--texto-suave); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-stock { flex: none; min-width: 78px; display: flex; flex-direction: column; align-items: center; padding: 0.4rem 0.7rem 0.45rem; border-radius: 16px; line-height: 1.1; }
+.inv-stock strong { font-size: 1.75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.inv-stock small { font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.inv-ok { background: #d9f6e3; color: #157347; }
+.inv-poco { background: #fff4d6; color: #a16207; }
+.inv-agotada { background: #fde0e7; color: #b3173f; }
+.inv-form { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: center; margin: 0; }
+.inv-accion { grid-column: 1 / -1; min-width: 0; }
+.inv-form .stepper { justify-self: start; }
+.inv-enviar { align-self: stretch; width: 100%; }
+.inv-previa { grid-column: 1 / -1; min-height: 1.5rem; margin: 0; display: flex; align-items: center; gap: 0.45rem; font-size: 0.86rem; font-weight: 600; }
+.inv-previa-ok { color: #157347; }
+.inv-previa-aviso { color: #a16207; }
+.inv-previa-error { color: #b3173f; }
+.inv-previa-neutro { color: var(--texto-suave); }
+.inv-previa strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.inv-enviar:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.inv-resultado { display: flex; align-items: flex-start; gap: 0.55rem; margin: -0.2rem 0 0.9rem; padding: 0.65rem 0.85rem; border-radius: var(--radio-sm); border-left: 4px solid; font-size: 0.88rem; font-weight: 600; line-height: 1.35; animation: revelar 0.6s var(--curva) 0.25s both; }
+.inv-resultado i { flex: none; margin-top: 0.1rem; }
+.inv-resultado-ok { background: #e1f7e8; color: #146c43; border-left-color: #2fbf71; }
+.inv-resultado-error { background: #fde6ec; color: #a4163a; border-left-color: #e5738f; }
+.inv-tarjeta.recien { border-color: var(--verde-claro); }
+.inv-tarjeta.con-error { border-color: #e5738f; }
+.inv-tarjeta.recien::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; animation: inv-destello 1.6s ease-out 0.6s 2; }
+.inv-tarjeta.recien .inv-stock strong { display: inline-block; animation: pop 0.7s var(--curva) 0.5s both; }
+@keyframes inv-destello { 0% { box-shadow: 0 0 0 0 rgba(82, 183, 136, 0.7); } 100% { box-shadow: 0 0 0 24px rgba(82, 183, 136, 0); } }
 .exito-pedido { display: flex; align-items: center; gap: 0.8rem; }
 .exito-pedido i { font-size: 1.4rem; animation: pop 0.6s var(--curva); }
 .acciones-pie { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1.4rem; }

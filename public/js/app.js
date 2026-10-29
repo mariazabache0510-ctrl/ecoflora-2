@@ -770,6 +770,119 @@
         });
     }
 
+    /* ---------- Inventario del admin ----------
+       Cada planta calcula en vivo cuánto quedará antes de guardar, para evitar errores de conteo.
+       Además hay buscador y filtros (todas / poco stock / agotadas). Sin JS el formulario
+       funciona igual: el servidor valida todo. */
+    function iniciarInventario() {
+        var tarjetas = $$('[data-inv-tarjeta]');
+        if (!tarjetas.length) return;
+
+        function plural(n) { return n + ' unidad' + (n === 1 ? '' : 'es'); }
+
+        $$('[data-inv-form]').forEach(function (form) {
+            var accion = $('select[name="accion"]', form);
+            var campo = $('input[name="cantidad"]', form);
+            var boton = $('.inv-enviar', form);
+            var previa = $('[data-inv-previa]', form);
+            var stock = Number(form.getAttribute('data-stock')) || 0;
+            if (!accion || !campo || !previa) return;
+
+            function calcular() {
+                var texto = String(campo.value).trim();
+                var n = Number(texto);
+                var entero = /^\d+$/.test(texto);
+                var tipo = 'ok';
+                var html = '';
+                var icono = 'bi-arrow-up-right-circle';
+                var bloquear = false;
+
+                if (!entero) {
+                    tipo = 'error'; bloquear = true; icono = 'bi-exclamation-circle';
+                    html = 'Escribe un número entero.';
+                } else if (accion.value !== 'fijar' && n < 1) {
+                    tipo = 'error'; bloquear = true; icono = 'bi-exclamation-circle';
+                    html = 'Escribe al menos 1 unidad.';
+                } else if (accion.value === 'agregar') {
+                    html = 'Pasará de ' + stock + ' a <strong>' + (stock + n) + '</strong> disponibles';
+                } else if (accion.value === 'quitar') {
+                    if (n > stock) {
+                        tipo = 'error'; bloquear = true; icono = 'bi-exclamation-circle';
+                        html = 'Solo hay ' + plural(stock) + ' para quitar.';
+                    } else {
+                        tipo = 'aviso'; icono = 'bi-arrow-down-right-circle';
+                        html = 'Pasará de ' + stock + ' a <strong>' + (stock - n) + '</strong> disponibles';
+                    }
+                } else if (n === stock) {
+                    tipo = 'neutro'; icono = 'bi-dash-circle';
+                    html = 'Ya hay ' + plural(stock) + ': no cambia nada.';
+                } else {
+                    icono = 'bi-arrow-left-right';
+                    html = 'Pasará de ' + stock + ' a <strong>' + n + '</strong> disponibles';
+                }
+
+                previa.className = 'inv-previa inv-previa-' + tipo;
+                previa.innerHTML = '<i class="bi ' + icono + '"></i><span>' + html + '</span>';
+                if (boton) {
+                    boton.disabled = bloquear;
+                    boton.setAttribute('aria-disabled', bloquear ? 'true' : 'false');
+                }
+            }
+
+            form.addEventListener('input', calcular);
+            form.addEventListener('change', calcular);
+            calcular();
+        });
+
+        // Buscador y filtros por nivel de stock.
+        var buscador = $('[data-inv-buscar]');
+        var chips = $$('[data-inv-filtro]');
+        var vacio = $('[data-inv-vacio]');
+        var estado = { texto: '', filtro: 'todas' };
+
+        function limpiar(texto) {
+            return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        }
+
+        function aplicar() {
+            var visibles = 0;
+            tarjetas.forEach(function (tarjeta) {
+                var coincideEstado = estado.filtro === 'todas' || tarjeta.getAttribute('data-estado') === estado.filtro;
+                var coincideTexto = !estado.texto || limpiar(tarjeta.getAttribute('data-texto')).indexOf(estado.texto) !== -1;
+                var mostrar = coincideEstado && coincideTexto;
+                tarjeta.hidden = !mostrar;
+                if (mostrar) visibles++;
+            });
+            if (vacio) vacio.hidden = visibles > 0;
+        }
+
+        if (buscador) {
+            buscador.addEventListener('input', function () {
+                estado.texto = limpiar(buscador.value);
+                aplicar();
+            });
+        }
+        chips.forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                estado.filtro = chip.getAttribute('data-inv-filtro');
+                chips.forEach(function (otro) {
+                    var activo = otro === chip;
+                    otro.classList.toggle('activo', activo);
+                    otro.setAttribute('aria-pressed', activo ? 'true' : 'false');
+                });
+                aplicar();
+            });
+        });
+
+        // Tras guardar, la página vuelve a la planta que acabas de tocar.
+        var reciente = $('.inv-tarjeta.recien, .inv-tarjeta.con-error');
+        if (reciente) {
+            setTimeout(function () {
+                reciente.scrollIntoView({ behavior: reducir ? 'auto' : 'smooth', block: 'center' });
+            }, 350);
+        }
+    }
+
     /* ---------- Volver arriba ---------- */
     function iniciarSubir() {
         $$('[data-subir]').forEach(function (boton) {
@@ -793,6 +906,7 @@
             iniciarGaleria,
             iniciarFormularios,
             iniciarDesplegables,
+            iniciarInventario,
             iniciarAlertas,
             iniciarTransicion,
             iniciarSubir

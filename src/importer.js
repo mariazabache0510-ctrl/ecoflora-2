@@ -202,7 +202,10 @@ function flag(value) {
   return value === true || value === 1 || value === '1';
 }
 
-async function applyDump(bucket) {
+// Con `conservarStock`, las plantas que ya existían (mismo id y mismo nombre) mantienen el stock
+// actual de la base de datos: así una actualización del catálogo no borra lo que se vendió
+// ni lo que la administradora añadió desde el panel de Inventario.
+async function applyDump(bucket, { conservarStock = false } = {}) {
   if (bucket.categorias) {
     assignIds(bucket.categorias, 'id_categoria');
     const rows = dedupe(bucket.categorias, 'id_categoria').map((row) => ({
@@ -231,6 +234,16 @@ async function applyDump(bucket) {
       destacada: flag(row.destacada),
       fecha_creacion: parseDate(row.fecha_creacion)
     }));
+    if (conservarStock) {
+      const actuales = await Planta.find({}, { id_planta: 1, nombre: 1, stock: 1, _id: 0 }).lean();
+      const porId = new Map(actuales.map((planta) => [planta.id_planta, planta]));
+      rows.forEach((row) => {
+        const previa = porId.get(row.id_planta);
+        if (previa && String(previa.nombre).toLowerCase() === row.nombre.toLowerCase() && Number.isFinite(previa.stock)) {
+          row.stock = previa.stock;
+        }
+      });
+    }
     await Planta.deleteMany({});
     if (rows.length) await Planta.insertMany(rows);
     await syncCounter('plantas', rows.map((row) => row.id_planta));
@@ -393,14 +406,15 @@ async function mergeUsers(rows) {
 }
 
 // Si data/ecoflora_full.sql cambió desde la última vez, actualiza el catálogo
-// (categorías y plantas) y suma los usuarios nuevos. No borra pedidos ni cuentas.
+// (categorías y plantas) y suma los usuarios nuevos. No borra pedidos ni cuentas y conserva el
+// stock actual de las plantas que ya existían (el stock se gestiona desde Admin > Inventario).
 async function syncCatalog() {
   if (!fs.existsSync(FULL_DUMP)) return false;
   const sql = fs.readFileSync(FULL_DUMP, 'utf8');
   const current = await Meta.findById(DUMP_HASH_KEY).lean();
   if (current && current.value === hashText(sql)) return false;
   const bucket = parseSqlDump(sql);
-  await applyDump({ categorias: bucket.categorias, plantas: bucket.plantas });
+  await applyDump({ categorias: bucket.categorias, plantas: bucket.plantas }, { conservarStock: true });
   await mergeUsers(bucket.usuarios);
   await rememberDump(sql);
   return true;

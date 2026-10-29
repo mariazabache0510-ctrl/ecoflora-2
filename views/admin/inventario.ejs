@@ -1,0 +1,96 @@
+<%- include(partial('header')) %>
+
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-boxes"></i></span>
+        <div>
+            <h1>Inventario</h1>
+            <p><%= resumen.unidades %> unidades en <%= resumen.total %> plantas<%= resumen.poco ? ' · ' + resumen.poco + ' con poco stock' : '' %><%= resumen.agotadas ? ' · ' + resumen.agotadas + ' agotada' + (resumen.agotadas === 1 ? '' : 's') : '' %></p>
+        </div>
+    </div>
+
+    <%# El resultado de guardar aparece dentro de la tarjeta de la planta; arriba solo si esa planta no existe. %>
+    <% if (aviso && !plantas.some(function(p) { return p.id_planta === aviso.id; })) { %>
+    <div class="alert <%= aviso.tipo === 'ok' ? 'alert-success' : 'alert-danger' %>" role="status">
+        <i class="bi <%= aviso.tipo === 'ok' ? 'bi-check-circle' : 'bi-exclamation-triangle' %> me-2"></i><%= aviso.texto %>
+    </div>
+    <% } %>
+
+    <p class="text-muted reveal">Cuando lleguen plantas nuevas, elige <strong>Añadir al stock</strong> y escribe cuántas llegaron. El stock baja solo cada vez que un cliente hace un pedido.</p>
+
+    <div class="filtro vidrio reveal">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-5">
+                <div class="buscador">
+                    <i class="bi bi-search"></i>
+                    <input type="search" class="form-control" placeholder="Buscar planta o categoría..." aria-label="Buscar en el inventario" autocomplete="off" data-inv-buscar>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="chips-filtro" role="group" aria-label="Filtrar por nivel de stock">
+                    <button type="button" class="chip-filtro activo" data-inv-filtro="todas" aria-pressed="true"><i class="bi bi-grid"></i>Todas <span class="chip-cuenta"><%= resumen.total %></span></button>
+                    <button type="button" class="chip-filtro" data-inv-filtro="poco" aria-pressed="false"><i class="bi bi-lightning-charge-fill"></i>Poco stock <span class="chip-cuenta"><%= resumen.poco %></span></button>
+                    <button type="button" class="chip-filtro" data-inv-filtro="agotada" aria-pressed="false"><i class="bi bi-x-circle"></i>Agotadas <span class="chip-cuenta"><%= resumen.agotadas %></span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <% plantas.forEach(function(planta, i) {
+            const estado = planta.stock <= 0 ? 'agotada' : (planta.stock <= STOCK_BAJO ? 'poco' : 'ok');
+            const reciente = aviso && aviso.id === planta.id_planta;
+        %>
+        <div class="col-md-6 col-xl-4" data-inv-tarjeta data-estado="<%= estado %>" data-texto="<%= planta.nombre %> <%= planta.nombre_cientifico %> <%= planta.categoria %>">
+            <article class="inv-tarjeta vidrio reveal<%= reciente ? (aviso.tipo === 'ok' ? ' recien' : ' con-error') : '' %>" id="planta-<%= planta.id_planta %>" style="--i: <%= i % 6 %>">
+                <div class="inv-cabecera">
+                    <%- plantImg(planta, { class: 'inv-foto', width: 120, height: 120, alt: '' }) %>
+                    <div class="inv-titulo">
+                        <strong><%= planta.nombre %></strong>
+                        <small><%= planta.categoria %> · $<%= formatPrice(planta.precio) %></small>
+                    </div>
+                    <div class="inv-stock inv-<%= estado %>" title="Unidades disponibles ahora">
+                        <strong data-inv-actual><%= Math.max(0, planta.stock) %></strong>
+                        <small><%= estado === 'agotada' ? 'agotada' : (estado === 'poco' ? 'poco stock' : 'en stock') %></small>
+                    </div>
+                </div>
+
+                <% if (reciente) { %>
+                <div class="inv-resultado inv-resultado-<%= aviso.tipo === 'ok' ? 'ok' : 'error' %>" role="status">
+                    <i class="bi <%= aviso.tipo === 'ok' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' %>"></i>
+                    <span><%= aviso.texto %></span>
+                </div>
+                <% } %>
+
+                <form method="POST" action="/admin/inventario/<%= planta.id_planta %>" class="inv-form" data-inv-form data-stock="<%= Math.max(0, planta.stock) %>" novalidate>
+                    <div class="inv-accion">
+                        <select name="accion" class="form-select form-select-sm" aria-label="Qué hacer con el stock de <%= planta.nombre %>">
+                            <option value="agregar" data-icono="bi-plus-circle" data-tono="verde" data-detalle="Llegaron más plantas">Añadir al stock</option>
+                            <option value="quitar" data-icono="bi-dash-circle" data-tono="rojo" data-detalle="Se dañaron o se vendieron aparte">Quitar del stock</option>
+                            <option value="fijar" data-icono="bi-pencil-square" data-tono="azul" data-detalle="Corregir el conteo exacto">Dejar en una cantidad</option>
+                        </select>
+                    </div>
+                    <div class="stepper stepper-sm" data-stepper>
+                        <button type="button" data-paso="-1" aria-label="Menos"><i class="bi bi-dash-lg"></i></button>
+                        <input type="number" name="cantidad" value="1" min="0" max="100000" step="1" inputmode="numeric" aria-label="Cantidad para <%= planta.nombre %>">
+                        <button type="button" data-paso="1" aria-label="Más"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-sm inv-enviar"><i class="bi bi-check2-circle me-1"></i>Actualizar</button>
+                    <p class="inv-previa" data-inv-previa aria-live="polite"></p>
+                </form>
+            </article>
+        </div>
+        <% }) %>
+    </div>
+
+    <div class="vacio vidrio" data-inv-vacio hidden>
+        <i class="bi bi-search"></i>
+        <p class="mt-3 text-muted mb-0">Ninguna planta coincide con tu búsqueda.</p>
+    </div>
+
+    <div class="acciones-pie">
+        <a href="/admin" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

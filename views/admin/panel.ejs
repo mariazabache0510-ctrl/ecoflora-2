@@ -58,6 +58,14 @@
             </a>
         </div>
         <div class="col-md-6 col-xl-4 reveal" style="--i: 2">
+            <a href="/admin/inventario" class="accion vidrio" style="--c1: #7a4a17; --c2: #d99a3d">
+                <span class="a-icono"><i class="bi bi-boxes"></i></span>
+                <div><strong>Inventario / Stock</strong><small><%= stockBajo > 0 ? stockBajo + ' por reponer' : 'Añadir o ajustar unidades' %></small></div>
+                <% if (stockBajo > 0) { %><span class="accion-badge"><%= stockBajo %></span><% } %>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 3">
             <a href="/admin/mensajes" class="accion vidrio" style="--c1: #128c7e; --c2: #25d366">
                 <span class="a-icono"><i class="bi bi-chat-dots"></i></span>
                 <div><strong>Mensajes de contacto</strong><small><%= mensajesSinLeer > 0 ? mensajesSinLeer + ' sin leer' : 'Todo al día' %></small></div>
@@ -65,14 +73,14 @@
                 <i class="bi bi-arrow-right a-flecha"></i>
             </a>
         </div>
-        <div class="col-md-6 col-xl-4 reveal" style="--i: 3">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 4">
             <a href="/" class="accion vidrio" style="--c1: #0c6a94; --c2: #4aa8d8">
                 <span class="a-icono"><i class="bi bi-shop"></i></span>
                 <div><strong>Ver tienda</strong><small>Volver al vivero</small></div>
                 <i class="bi bi-arrow-right a-flecha"></i>
             </a>
         </div>
-        <div class="col-md-6 col-xl-4 reveal" style="--i: 4">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 5">
             <a href="/logout" class="accion vidrio" style="--c1: #c9184a; --c2: #ff8fa3">
                 <span class="a-icono"><i class="bi bi-box-arrow-right"></i></span>
                 <div><strong>Cerrar sesión</strong><small>Salir del panel</small></div>
