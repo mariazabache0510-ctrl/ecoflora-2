@@ -3,60 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1b4332">
     <title>EcoFlora - Vivero Online</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/estilos.css">
+    <script>document.documentElement.classList.add('js');</script>
 </head>
+<%
+    const ruta = currentPath || '/';
+    const activo = (destino, exacto) => (destino === '/' || exacto ? ruta === destino : (ruta === destino || ruta.indexOf(destino + '/') === 0));
+    const esAdmin = sesion && sesion.rol === 'admin';
+    const inicial = sesion ? String(sesion.nombre || '?').trim().charAt(0).toUpperCase() : '';
+    const primerNombre = sesion ? String(sesion.nombre || '').trim().split(' ')[0] : '';
+    const enCuenta = sesion && (ruta.indexOf('/admin') === 0 || ruta.indexOf('/usuario') === 0);
+%>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark navbar-ecoflora sticky-top">
-    <div class="container">
-        <a class="navbar-brand" href="/">
-            <i class="bi bi-flower1 me-2"></i>EcoFlora
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuEco">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="menuEco">
-            <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item"><a class="nav-link" href="/">Inicio</a></li>
-                <li class="nav-item"><a class="nav-link" href="/catalogo">Catálogo</a></li>
-                <li class="nav-item"><a class="nav-link" href="/nosotros">Nosotros</a></li>
-                <li class="nav-item"><a class="nav-link" href="/contacto">Contacto</a></li>
-                <li class="nav-item ms-lg-3">
-                    <a class="nav-link carrito-badge" href="/carrito">
-                        <i class="bi bi-cart3 fs-5"></i>
-                        <% if (items_carrito > 0) { %>
-                            <span class="carrito-numero"><%= items_carrito %></span>
-                        <% } %>
-                    </a>
-                </li>
-                <% if (sesion) { %>
-                    <% if (sesion.rol === 'admin') { %>
-                        <li class="nav-item"><a class="nav-link" href="/admin"><i class="bi bi-speedometer2 me-1"></i>Panel Admin</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/usuarios"><i class="bi bi-people me-1"></i>Usuarios</a></li>
-                    <% } else { %>
-                        <li class="nav-item"><a class="nav-link" href="/usuario"><i class="bi bi-person me-1"></i>Mi Panel</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/usuario/domicilios"><i class="bi bi-truck me-1"></i>Mis Pedidos</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/usuario/historial"><i class="bi bi-clock-history me-1"></i>Historial</a></li>
-                    <% } %>
-                    <li class="nav-item ms-lg-2">
-                        <a class="btn btn-outline-light btn-sm" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Salir</a>
-                    </li>
-                <% } else { %>
-                    <li class="nav-item ms-lg-2">
-                        <a class="btn btn-outline-light btn-sm" href="/login">Ingresar</a>
-                    </li>
-                <% } %>
-            </ul>
-        </div>
-    </div>
-</nav>
+<%- include(partial('fondo')) %>
 
-<main>
+<a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
+
+<header class="nav-eco" data-nav>
+    <nav class="navbar navbar-expand-lg navbar-dark" aria-label="Principal">
+        <div class="container">
+            <a class="marca" href="/" aria-label="EcoFlora, ir al inicio">
+                <span class="marca-logo"><%- include(partial('logo'), { uid: 'cab' }) %></span>
+                <span class="marca-texto">
+                    <span class="marca-nombre" aria-hidden="true"><% 'EcoFlora'.split('').forEach(function(letra, i) { %><span class="letra<%= i >= 3 ? ' letra-flora' : '' %>" style="--i: <%= i %>"><%= letra %></span><% }) %></span>
+                    <span class="visually-hidden">EcoFlora</span>
+                    <small class="marca-lema">Vivero · Plantas y flores</small>
+                </span>
+            </a>
+
+            <button class="navbar-toggler burger" type="button" data-bs-toggle="collapse" data-bs-target="#menuEco" aria-controls="menuEco" aria-expanded="false" aria-label="Abrir o cerrar el menú">
+                <span></span><span></span><span></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menuEco">
+                <div class="nav-lista-wrap ms-lg-auto" data-nav-lista>
+                    <span class="nav-indicador" aria-hidden="true"></span>
+                    <ul class="navbar-nav align-items-lg-center">
+                        <li class="nav-item" style="--i: 0"><a class="nav-link<%= activo('/') ? ' activo' : '' %>" href="/"<%- activo('/') ? ' aria-current="page"' : '' %>><i class="bi bi-house-heart"></i><span>Inicio</span></a></li>
+                        <li class="nav-item" style="--i: 1"><a class="nav-link<%= activo('/catalogo') || activo('/planta') ? ' activo' : '' %>" href="/catalogo"<%- activo('/catalogo') ? ' aria-current="page"' : '' %>><i class="bi bi-grid-3x3-gap"></i><span>Catálogo</span></a></li>
+                        <li class="nav-item" style="--i: 2"><a class="nav-link<%= activo('/nosotros') ? ' activo' : '' %>" href="/nosotros"<%- activo('/nosotros') ? ' aria-current="page"' : '' %>><i class="bi bi-tree"></i><span>Nosotros</span></a></li>
+                        <li class="nav-item" style="--i: 3"><a class="nav-link<%= activo('/contacto') ? ' activo' : '' %>" href="/contacto"<%- activo('/contacto') ? ' aria-current="page"' : '' %>><i class="bi bi-chat-heart"></i><span>Contacto</span></a></li>
+                        <li class="nav-item" style="--i: 4">
+                            <a class="nav-link carrito-badge carrito-btn<%= activo('/carrito') ? ' activo' : '' %>" href="/carrito" aria-label="Carrito de compras<%= items_carrito > 0 ? ', ' + items_carrito + ' productos' : '' %>">
+                                <i class="bi bi-cart3"></i><span class="d-lg-none">Carrito</span>
+                                <% if (items_carrito > 0) { %>
+                                    <span class="carrito-numero" data-carrito-numero><%= items_carrito %></span>
+                                <% } %>
+                            </a>
+                        </li>
+                        <% if (sesion) { %>
+                            <li class="nav-item dropdown" style="--i: 5">
+                                <a class="nav-link dropdown-toggle cuenta<%= enCuenta ? ' activo' : '' %>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="avatar"><%= inicial %></span><span class="cuenta-nombre"><%= primerNombre %></span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end menu-eco">
+                                    <% if (esAdmin) { %>
+                                        <li><a class="dropdown-item<%= activo('/admin', true) ? ' active' : '' %>" href="/admin"><i class="bi bi-speedometer2"></i>Panel Admin</a></li>
+                                        <li><a class="dropdown-item<%= activo('/admin/usuarios') ? ' active' : '' %>" href="/admin/usuarios"><i class="bi bi-people"></i>Usuarios</a></li>
+                                        <li><a class="dropdown-item<%= activo('/admin/pedidos') ? ' active' : '' %>" href="/admin/pedidos"><i class="bi bi-truck"></i>Pedidos</a></li>
+                                    <% } else { %>
+                                        <li><a class="dropdown-item<%= activo('/usuario', true) ? ' active' : '' %>" href="/usuario"><i class="bi bi-person"></i>Mi Panel</a></li>
+                                        <li><a class="dropdown-item<%= activo('/usuario/domicilios') ? ' active' : '' %>" href="/usuario/domicilios"><i class="bi bi-truck"></i>Mis Pedidos</a></li>
+                                        <li><a class="dropdown-item<%= activo('/usuario/historial') ? ' active' : '' %>" href="/usuario/historial"><i class="bi bi-clock-history"></i>Historial</a></li>
+                                        <li><a class="dropdown-item<%= activo('/usuario/perfil') ? ' active' : '' %>" href="/usuario/perfil"><i class="bi bi-pencil-square"></i>Mis datos</a></li>
+                                    <% } %>
+                                </ul>
+                            </li>
+                            <li class="nav-item ms-lg-1" style="--i: 6">
+                                <a class="btn btn-nav btn-nav-salir" href="/logout"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
+                            </li>
+                        <% } else { %>
+                            <li class="nav-item ms-lg-1" style="--i: 5">
+                                <a class="btn btn-nav btn-nav-ingresar" href="/login"><i class="bi bi-person-circle"></i><span>Ingresar</span></a>
+                            </li>
+                            <li class="nav-item" style="--i: 6">
+                                <a class="btn btn-nav btn-nav-registro" href="/registro"><i class="bi bi-flower2"></i><span>Crear cuenta</span></a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <span class="nav-progreso" aria-hidden="true"></span>
+</header>
+
+<main id="contenido">
 <% if (currentPath === '/' && queryError) { %>
-    <div class="container mt-3">
-        <div class="alert alert-warning"><%= queryError %></div>
+    <div class="container mt-4">
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i><%= queryError %></div>
     </div>
 <% } %>

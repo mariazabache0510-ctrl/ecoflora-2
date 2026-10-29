@@ -1,0 +1,28 @@
+<%# Logo de EcoFlora: flor sobre tallo con dos hojas. Recibe `uid` para que los degradados no repitan id. %>
+<svg class="logo-eco" viewBox="0 0 56 56" width="46" height="46" aria-hidden="true" focusable="false">
+    <defs>
+        <linearGradient id="lg-fondo-<%= uid %>" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#74c69d"/>
+            <stop offset="1" stop-color="#1b4332"/>
+        </linearGradient>
+        <linearGradient id="lg-petalo-<%= uid %>" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff5f8"/>
+            <stop offset="1" stop-color="#ff9fb8"/>
+        </linearGradient>
+    </defs>
+    <circle class="logo-fondo" cx="28" cy="28" r="26" fill="url(#lg-fondo-<%= uid %>)"/>
+    <circle class="logo-aro" cx="28" cy="28" r="25" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.2" stroke-dasharray="3 5"/>
+    <path class="logo-tallo" d="M28 51 C28 43 28 36 28 29" stroke="#d8f3dc" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path class="logo-hoja logo-hoja-i" d="M28 45 C19 45 13 40 12 32 C21 32 27 37 28 45Z" fill="#95d5b2"/>
+    <path class="logo-hoja logo-hoja-d" d="M28 41 C36 41 42 37 43 29 C34 29 29 34 28 41Z" fill="#b7e4c7"/>
+    <g class="logo-flor">
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)"/>
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)" transform="rotate(60 28 22)"/>
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)" transform="rotate(120 28 22)"/>
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)" transform="rotate(180 28 22)"/>
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)" transform="rotate(240 28 22)"/>
+        <ellipse cx="28" cy="13.5" rx="4.6" ry="8" fill="url(#lg-petalo-<%= uid %>)" transform="rotate(300 28 22)"/>
+        <circle cx="28" cy="22" r="4.4" fill="#ffd166"/>
+        <circle cx="28" cy="22" r="1.8" fill="#e9a23b"/>
+    </g>
+</svg>

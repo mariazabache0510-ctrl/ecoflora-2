@@ -1,23 +1,52 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
+<div class="container contenedor-pagina">
     <div class="row justify-content-center">
-        <div class="col-md-7">
-            <div class="card shadow border-0" style="border-radius: 20px;">
-                <div class="card-header bg-primary text-white text-center" style="border-radius: 20px 20px 0 0;"><h4 class="mb-0">Modificar mis datos</h4></div>
-                <div class="card-body p-4">
-                    <% if (actualizado) { %><div class="alert alert-success">Tus datos fueron actualizados correctamente.</div><% } %>
-                    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
-                    <form action="/usuario/perfil" method="POST" onsubmit="return validarPerfil();">
-                        <div class="mb-3"><label class="form-label">Nombre completo</label><input type="text" name="nombre" id="nombre" class="form-control" value="<%= datos.nombre %>" required></div>
-                        <div class="mb-3"><label class="form-label">Usuario</label><input type="text" class="form-control" value="<%= datos.usuario %>" disabled><div class="form-text">El usuario no se puede modificar.</div></div>
-                        <div class="mb-3"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control" value="<%= datos.email %>" required></div>
-                        <div class="mb-3"><label class="form-label">Teléfono</label><input type="text" name="telefono" class="form-control" value="<%= datos.telefono || '' %>"></div>
-                        <div class="mb-3"><label class="form-label">Dirección</label><input type="text" name="direccion" class="form-control" value="<%= datos.direccion || '' %>"></div>
-                        <div class="mb-3"><label class="form-label">Ciudad</label><input type="text" name="ciudad" class="form-control" value="<%= datos.ciudad || '' %>"></div>
-                        <div class="d-grid gap-2"><button type="submit" class="btn btn-primary">Guardar cambios</button><a href="/usuario" class="btn btn-secondary">Volver al panel</a></div>
-                    </form>
+        <div class="col-lg-8 col-xl-7">
+            <div class="panel-cabecera reveal">
+                <span class="panel-icono"><i class="bi bi-person-gear"></i></span>
+                <div>
+                    <h1>Modificar mis datos</h1>
+                    <p>Mantén tu información al día</p>
                 </div>
+            </div>
+
+            <div class="form-tarjeta vidrio reveal" style="--i: 1">
+                <% if (actualizado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Tus datos fueron actualizados correctamente.</div><% } %>
+                <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+                <form action="/usuario/perfil" method="POST" onsubmit="return validarPerfil();">
+                    <div class="mb-3">
+                        <label class="form-label" for="nombre">Nombre completo</label>
+                        <div class="campo"><i class="bi bi-person-vcard"></i><input type="text" name="nombre" id="nombre" class="form-control" value="<%= datos.nombre %>" required></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="usuario">Usuario</label>
+                        <div class="campo"><i class="bi bi-at"></i><input type="text" id="usuario" class="form-control" value="<%= datos.usuario %>" disabled></div>
+                        <div class="form-text">El usuario no se puede modificar.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="email">Email</label>
+                        <div class="campo"><i class="bi bi-envelope"></i><input type="email" name="email" id="email" class="form-control" value="<%= datos.email %>" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="telefono">Teléfono</label>
+                            <div class="campo"><i class="bi bi-telephone"></i><input type="text" id="telefono" name="telefono" class="form-control" value="<%= datos.telefono || '' %>"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="ciudad">Ciudad</label>
+                            <div class="campo"><i class="bi bi-geo-alt"></i><input type="text" id="ciudad" name="ciudad" class="form-control" value="<%= datos.ciudad || '' %>"></div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="direccion">Dirección</label>
+                        <div class="campo"><i class="bi bi-house-door"></i><input type="text" id="direccion" name="direccion" class="form-control" value="<%= datos.direccion || '' %>"></div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-ecoflora btn-lg"><i class="bi bi-check2-circle me-2"></i>Guardar cambios</button>
+                        <a href="/usuario" class="btn btn-suave">Volver al panel</a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

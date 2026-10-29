@@ -1,52 +1,115 @@
 <%- include(partial('header')) %>
 
-<section class="hero-ecoflora animate-fade-in">
-    <div class="container">
-        <h1>Lleva la naturaleza a tu hogar</h1>
-        <p class="lead mb-4">Plantas seleccionadas, domicilios seguros y asesoría personalizada</p>
-        <a href="/catalogo" class="btn btn-ecoflora btn-lg me-2"><i class="bi bi-grid me-2"></i>Ver catálogo</a>
-        <a href="/nosotros" class="btn btn-outline-light btn-lg">Conócenos</a>
-    </div>
-</section>
+<%
+    const paletas = [['#2d6a4f', '#52b788'], ['#bc6c25', '#e9a23b'], ['#40916c', '#95d5b2'], ['#7b4fc4', '#b794f4'], ['#d6436e', '#ff9fb2']];
+    const portada = destacadas.slice(0, 3);
+%>
 
-<div class="container my-5">
-    <h2 class="text-center mb-4 fw-bold" style="color: var(--verde-oscuro);"><i class="bi bi-collection me-2"></i>Nuestras categorías</h2>
-    <div class="row g-4 mb-5">
-        <% categorias.forEach(function(cat) { %>
-        <div class="col-6 col-md-4 col-lg-2">
-            <a href="/catalogo?categoria=<%= cat.id_categoria %>" class="text-decoration-none">
-                <div class="card h-100 text-center p-3 border-0 shadow-sm" style="border-radius: 15px;">
-                    <div class="card-body">
-                        <i class="bi <%= cat.icono %> fs-1 mb-2" style="color: var(--verde-medio);"></i>
-                        <h6 class="card-title text-dark"><%= cat.nombre %></h6>
+<section class="hero">
+    <div class="container">
+        <div class="hero-panel">
+            <span class="hero-deco hd-1"></span>
+            <span class="hero-deco hd-2"></span>
+            <span class="hero-deco hd-3"></span>
+            <div class="row align-items-center g-4 hero-contenido">
+                <div class="col-lg-6">
+                    <span class="hero-chip"><i class="bi bi-flower2"></i>Vivero online · Domicilios seguros</span>
+                    <h1 class="hero-titulo">
+                        <span class="palabra" style="--i: 0">Lleva</span>
+                        <span class="palabra" style="--i: 1">la</span>
+                        <span class="palabra resaltado" style="--i: 2">naturaleza</span>
+                        <span class="palabra" style="--i: 3">a</span>
+                        <span class="palabra" style="--i: 4">tu</span>
+                        <span class="palabra" style="--i: 5">hogar</span>
+                    </h1>
+                    <p class="hero-lead">Plantas seleccionadas, domicilios seguros y asesoría personalizada</p>
+                    <div class="hero-botones">
+                        <a href="/catalogo" class="btn btn-ecoflora btn-lg"><i class="bi bi-grid me-2"></i>Ver catálogo</a>
+                        <a href="/nosotros" class="btn btn-claro btn-lg">Conócenos</a>
                     </div>
                 </div>
-            </a>
-        </div>
-        <% }) %>
-    </div>
-
-    <h2 class="text-center mb-4 fw-bold" style="color: var(--verde-oscuro);"><i class="bi bi-stars me-2"></i>Plantas destacadas</h2>
-    <div class="row g-4">
-        <% destacadas.forEach(function(planta) { %>
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-planta h-100">
-                <div style="overflow: hidden; height: 250px;">
-                    <img src="<%= plantImage(planta.nombre) %>" class="card-img-top w-100 h-100" alt="<%= planta.nombre %>" style="object-fit: cover;">
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <span class="badge-categoria mb-2 align-self-start"><%= planta.categoria %></span>
-                    <h5 class="card-title fw-bold"><%= planta.nombre %></h5>
-                    <p class="card-text text-muted small flex-grow-1"><%= excerpt(planta.descripcion, 100) %>...</p>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span class="precio-planta">$<%= formatPrice(planta.precio) %></span>
-                        <a href="/planta/<%= planta.id_planta %>" class="btn btn-ecoflora btn-sm">Ver más</a>
+                <div class="col-lg-6">
+                    <div class="hero-collage" data-collage>
+                        <% portada.forEach(function(planta, i) { %>
+                        <figure class="collage-foto cf-<%= i + 1 %>">
+                            <a href="/planta/<%= planta.id_planta %>"><%- plantImg(planta, { eager: true, width: 480, height: 480 }) %></a>
+                            <figcaption><%= planta.nombre %></figcaption>
+                        </figure>
+                        <% }) %>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<section class="container mt-5">
+    <div class="row g-4">
+        <div class="col-md-4 reveal" style="--i: 0">
+            <div class="promesa vidrio" style="--c1: #2d6a4f; --c2: #52b788">
+                <span class="promesa-icono"><i class="bi bi-flower3"></i></span>
+                <div><h3>Plantas seleccionadas</h3><p>Ejemplares sanos, elegidos por nuestro equipo del vivero.</p></div>
+            </div>
+        </div>
+        <div class="col-md-4 reveal" style="--i: 1">
+            <div class="promesa vidrio" style="--c1: #bc6c25; --c2: #e9a23b">
+                <span class="promesa-icono"><i class="bi bi-truck"></i></span>
+                <div><h3>Domicilios seguros</h3><p>Llevamos tus plantas hasta la puerta de tu casa.</p></div>
+            </div>
+        </div>
+        <div class="col-md-4 reveal" style="--i: 2">
+            <div class="promesa vidrio" style="--c1: #d6436e; --c2: #ff9fb2">
+                <span class="promesa-icono"><i class="bi bi-chat-heart"></i></span>
+                <div><h3>Asesoría personalizada</h3><p>Te orientamos en el cuidado de cada planta.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container mt-5 pt-3">
+    <div class="seccion-cabecera reveal">
+        <span class="seccion-etiqueta"><i class="bi bi-collection"></i>Explora</span>
+        <h2 class="seccion-titulo">Nuestras categorías</h2>
+        <div class="divisor-hoja"><i class="bi bi-flower1"></i></div>
+    </div>
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 justify-content-center">
+        <% categorias.forEach(function(cat, i) { %>
+        <div class="col reveal" style="--i: <%= i %>">
+            <a href="/catalogo?categoria=<%= cat.id_categoria %>" class="tarjeta-categoria vidrio" style="--c1: <%= paletas[i % paletas.length][0] %>; --c2: <%= paletas[i % paletas.length][1] %>">
+                <span class="tc-icono"><i class="bi <%= cat.icono %>"></i></span>
+                <h3 class="tc-nombre"><%= cat.nombre %></h3>
+                <p class="tc-desc"><%= cat.descripcion %></p>
+                <span class="tc-mas">Ver plantas <i class="bi bi-arrow-right"></i></span>
+            </a>
+        </div>
         <% }) %>
     </div>
-</div>
+</section>
+
+<section class="container mt-5 pt-3">
+    <div class="seccion-cabecera reveal">
+        <span class="seccion-etiqueta"><i class="bi bi-stars"></i>Favoritas</span>
+        <h2 class="seccion-titulo">Plantas destacadas</h2>
+        <div class="divisor-hoja"><i class="bi bi-flower1"></i></div>
+    </div>
+    <div class="row g-4">
+        <% destacadas.forEach(function(planta, i) { %>
+        <div class="col-sm-6 col-lg-4">
+            <%- include(partial('tarjeta'), { planta: planta, i: i % 3 }) %>
+        </div>
+        <% }) %>
+    </div>
+    <div class="text-center mt-5 reveal">
+        <a href="/catalogo" class="btn btn-outline-ecoflora btn-lg">Ver todo el catálogo<i class="bi bi-arrow-right ms-2"></i></a>
+    </div>
+</section>
+
+<section class="container mt-5 pt-3">
+    <div class="banda-cta reveal">
+        <h2 class="mb-2">¿No sabes cuál elegir?</h2>
+        <p class="mb-4">Cuéntanos qué espacio tienes y te ayudamos a encontrar la planta ideal.</p>
+        <a href="/contacto" class="btn btn-claro btn-lg"><i class="bi bi-chat-heart me-2"></i>Escríbenos</a>
+    </div>
+</section>
 
 <%- include(partial('footer')) %>

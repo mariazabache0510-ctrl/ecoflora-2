@@ -1,38 +1,55 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <h2 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-truck me-2"></i>Confirmar domicilio</h2>
-    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+<div class="container contenedor-pagina">
+    <h1 class="titulo-pagina reveal"><i class="bi bi-truck"></i>Confirmar domicilio</h1>
+
+    <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+
     <div class="row g-4">
         <div class="col-lg-7">
-            <div class="card shadow-sm border-0 p-4" style="border-radius: 15px;">
-                <h5 class="fw-bold mb-3">Datos de envío</h5>
+            <div class="form-tarjeta vidrio reveal">
+                <h2 class="h4 fw-bold mb-3"><i class="bi bi-geo-alt me-2 text-success"></i>Datos de envío</h2>
                 <form method="POST" action="/confirmar-pedido">
-                    <div class="mb-3"><label class="form-label">Dirección completa *</label><textarea name="direccion" class="form-control" rows="2" required></textarea></div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3"><label class="form-label">Ciudad</label><input type="text" name="ciudad" class="form-control"></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Teléfono de contacto *</label><input type="text" name="telefono" class="form-control" required></div>
+                    <div class="mb-3">
+                        <label class="form-label" for="direccion">Dirección completa *</label>
+                        <textarea id="direccion" name="direccion" class="form-control" rows="2" required></textarea>
                     </div>
-                    <div class="mb-3"><label class="form-label">Notas adicionales</label><textarea name="notas" class="form-control" rows="2" placeholder="Ej: Dejar con portero, timbrar segundo piso..."></textarea></div>
-                    <button type="submit" class="btn btn-ecoflora w-100 btn-lg"><i class="bi bi-check-circle me-2"></i>Confirmar pedido</button>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="ciudad">Ciudad</label>
+                            <div class="campo"><i class="bi bi-buildings"></i><input type="text" id="ciudad" name="ciudad" class="form-control"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="telefono">Teléfono de contacto *</label>
+                            <div class="campo"><i class="bi bi-telephone"></i><input type="text" id="telefono" name="telefono" class="form-control" required></div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="notas">Notas adicionales</label>
+                        <textarea id="notas" name="notas" class="form-control" rows="2" placeholder="Ej: Dejar con portero, timbrar segundo piso..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-check-circle me-2"></i>Confirmar pedido</button>
                 </form>
             </div>
         </div>
+
         <div class="col-lg-5">
-            <div class="card shadow-sm border-0 p-4" style="border-radius: 15px; background: var(--verde-pastel);">
-                <h5 class="fw-bold mb-3">Resumen del pedido</h5>
-                <ul class="list-group list-group-flush bg-transparent">
-                    <% items.forEach(function(item) { %>
-                    <li class="list-group-item bg-transparent px-0 d-flex justify-content-between">
+            <aside class="resumen resumen-pastel vidrio reveal" style="--i: 2">
+                <h2 class="mb-3"><i class="bi bi-receipt me-2"></i>Resumen del pedido</h2>
+                <% items.forEach(function(item) { %>
+                <div class="resumen-linea">
+                    <span class="d-flex align-items-center gap-2">
+                        <%- plantImg(item, { width: 44, height: 44, style: 'width:44px;height:44px;border-radius:12px;object-fit:cover;' }) %>
                         <span><%= item.nombre %> x<%= item.cantidad %></span>
-                        <strong>$<%= formatPrice(item.precio * item.cantidad) %></strong>
-                    </li>
-                    <% }) %>
-                    <li class="list-group-item bg-transparent px-0 d-flex justify-content-between fs-5 fw-bold border-top">
-                        <span>Total</span><span style="color: var(--verde-oscuro);">$<%= formatPrice(total) %></span>
-                    </li>
-                </ul>
-            </div>
+                    </span>
+                    <strong>$<%= formatPrice(item.precio * item.cantidad) %></strong>
+                </div>
+                <% }) %>
+                <div class="resumen-total">
+                    <span>Total</span>
+                    <strong>$<%= formatPrice(total) %></strong>
+                </div>
+            </aside>
         </div>
     </div>
 </div>

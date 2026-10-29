@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" preserveAspectRatio="xMidYMax slice">
+<style>
+  .arbol, .tallo { transform-box: fill-box; transform-origin: 50% 100%; animation: mecer var(--t, 7s) ease-in-out var(--d, 0s) infinite alternate; }
+  .arbol { animation-name: mecer-suave; }
+  @keyframes mecer { from { transform: rotate(-2.6deg); } to { transform: rotate(2.6deg); } }
+  @keyframes mecer-suave { from { transform: rotate(-0.9deg); } to { transform: rotate(0.9deg); } }
+  @media (prefers-reduced-motion: reduce) { .arbol, .tallo { animation: none; } }
+</style>
+<defs>
+  <symbol id="s-arbol" viewBox="0 0 100 150">
+    <path d="M45 150 L46.5 90 Q47 84 50 84 Q53 84 53.5 90 L55 150Z" fill="currentColor"/>
+    <g fill="currentColor"><circle cx="50" cy="48" r="36"/><circle cx="26" cy="68" r="24"/><circle cx="74" cy="68" r="24"/><circle cx="50" cy="78" r="27"/></g>
+    <circle cx="38" cy="38" r="15" fill="#fff" opacity=".2"/><circle cx="64" cy="64" r="10" fill="#fff" opacity=".12"/>
+  </symbol>
+  <symbol id="s-pino" viewBox="0 0 80 160">
+    <g fill="currentColor"><path d="M40 0 L66 54 H14Z"/><path d="M40 30 L72 94 H8Z"/><path d="M40 64 L78 134 H2Z"/><rect x="35" y="128" width="10" height="32"/></g>
+    <path d="M40 8 L28 40 H36Z" fill="#fff" opacity=".18"/>
+  </symbol>
+  <symbol id="s-arbusto" viewBox="0 0 120 60">
+    <g fill="currentColor"><circle cx="30" cy="40" r="20"/><circle cx="60" cy="30" r="28"/><circle cx="92" cy="40" r="21"/><rect x="8" y="40" width="104" height="20" rx="8"/></g>
+    <circle cx="52" cy="22" r="10" fill="#fff" opacity=".18"/>
+  </symbol>
+  <symbol id="s-flor" viewBox="-30 -30 60 60">
+    <g fill="currentColor">
+      <ellipse cx="0" cy="-14" rx="8.5" ry="14"/><ellipse cx="0" cy="-14" rx="8.5" ry="14" transform="rotate(60)"/>
+      <ellipse cx="0" cy="-14" rx="8.5" ry="14" transform="rotate(120)"/><ellipse cx="0" cy="-14" rx="8.5" ry="14" transform="rotate(180)"/>
+      <ellipse cx="0" cy="-14" rx="8.5" ry="14" transform="rotate(240)"/><ellipse cx="0" cy="-14" rx="8.5" ry="14" transform="rotate(300)"/>
+    </g>
+    <circle r="7" fill="#ffd166"/><circle r="3" fill="#e9a23b"/>
+  </symbol>
+  <symbol id="s-tulipan" viewBox="-20 -34 40 50">
+    <path d="M-15 -24 C-16 2 -9 12 0 12 C9 12 16 2 15 -24 L7.5 -13 L0 -30 L-7.5 -13Z" fill="currentColor"/>
+    <path d="M0 -30 L-7.5 -13 L-2 4 C-5 -4 -3 -16 0 -30Z" fill="#fff" opacity=".28"/>
+  </symbol>
+  <symbol id="s-pasto" viewBox="0 0 60 50">
+    <g fill="currentColor"><path d="M4 50 Q8 22 0 2 Q15 24 15 50Z"/><path d="M16 50 Q18 14 14 -2 Q28 16 26 50Z"/><path d="M28 50 Q32 20 38 4 Q42 26 38 50Z"/><path d="M40 50 Q46 28 56 14 Q54 34 50 50Z"/></g>
+  </symbol>
+</defs>
+<path d="M-40 270.6 L-20 274 L20 279.3 L60 282.1 L100 282.4 L140 280.5 L180 277.3 L220 273.5 L260 270.1 L300 267.5 L340 266.2 L380 265.9 L420 266.1 L460 266.2 L500 265.3 L540 262.9 L580 258.6 L620 252.6 L660 245.4 L700 237.8 L740 230.9 L780 225.5 L820 222.6 L860 222.5 L900 225 L940 229.8 L980 236.1 L1020 242.7 L1060 248.8 L1100 253.7 L1140 257 L1180 258.7 L1220 259.4 L1260 259.7 L1300 260.3 L1340 261.9 L1380 264.7 L1420 268.9 L1460 273.8 L1500 278.8 L1540 283 L1580 285.4 L1620 285.4 V420 H-40Z" fill="#d4f0dc"/>
+<g class="arbol" style="--d:5.1s;--t:8.2s"><use href="#s-arbol" x="27" y="183.7" width="71" height="106.4" style="color:#b9e4c6"/></g>
+      <g class="arbol" style="--d:2.9s;--t:9.4s"><use href="#s-arbol" x="115.5" y="181.3" width="71" height="106.5" style="color:#b9e4c6"/></g>
+      <g class="arbol" style="--d:1.1s;--t:7.1s"><use href="#s-arbol" x="263.6" y="162.3" width="75.4" height="113.2" style="color:#c4e9cf"/></g>
+      <g class="arbol" style="--d:3.6s;--t:8.3s"><use href="#s-arbol" x="389.4" y="175" width="66.1" height="99.1" style="color:#c4e9cf"/></g>
+      <g class="arbol" style="--d:1.9s;--t:8.5s"><use href="#s-arbol" x="506.8" y="148.7" width="81" height="121.5" style="color:#cdeed7"/></g>
+      <g class="arbol" style="--d:1.8s;--t:6.6s"><use href="#s-arbol" x="629.2" y="170.3" width="55.8" height="83.7" style="color:#cdeed7"/></g>
+      <g class="arbol" style="--d:5.1s;--t:6.6s"><use href="#s-arbol" x="786.9" y="133" width="65.1" height="97.7" style="color:#b9e4c6"/></g>
+      <g class="arbol" style="--d:0.5s;--t:9.4s"><use href="#s-arbol" x="910.9" y="119.1" width="80.2" height="120.4" style="color:#c4e9cf"/></g>
+      <g class="arbol" style="--d:4.4s;--t:6.4s"><use href="#s-pino" x="1010.5" y="113.1" width="70.8" height="141.7" style="color:#b9e4c6"/></g>
+      <g class="arbol" style="--d:5.9s;--t:7.7s"><use href="#s-arbol" x="1153" y="183.6" width="55.4" height="83.2" style="color:#b9e4c6"/></g>
+      <g class="arbol" style="--d:2.5s;--t:9s"><use href="#s-pino" x="1257" y="137.5" width="65.3" height="130.6" style="color:#cdeed7"/></g>
+      <g class="arbol" style="--d:1s;--t:6.5s"><use href="#s-arbol" x="1363.5" y="167" width="71.8" height="107.6" style="color:#cdeed7"/></g>
+      <g class="arbol" style="--d:2.3s;--t:9.7s"><use href="#s-pino" x="1511.9" y="143.8" width="74" height="147.9" style="color:#b9e4c6"/></g>
+</svg>

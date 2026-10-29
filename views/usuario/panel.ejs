@@ -1,18 +1,51 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <div class="card shadow border-0" style="border-radius: 20px;">
-        <div class="card-header bg-primary text-white" style="border-radius: 20px 20px 0 0;"><h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>Panel del Cliente</h4></div>
-        <div class="card-body p-4">
-            <h5 class="mb-3">Bienvenido(a), <%= sesion.nombre %></h5>
-            <p class="text-muted">Desde aquí puedes gestionar tus pedidos, editar tus datos y ver tu historial de navegación.</p>
-            <div class="d-flex gap-3 flex-wrap mt-4">
-                <a href="/catalogo" class="btn btn-ecoflora"><i class="bi bi-shop me-2"></i>Ir a comprar</a>
-                <a href="/usuario/domicilios" class="btn btn-outline-ecoflora"><i class="bi bi-truck me-2"></i>Mis Pedidos</a>
-                <a href="/usuario/perfil" class="btn btn-secondary"><i class="bi bi-pencil me-2"></i>Editar mis datos</a>
-                <a href="/usuario/historial" class="btn btn-info text-white"><i class="bi bi-clock-history me-2"></i>Historial</a>
-                <a href="/logout" class="btn btn-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a>
-            </div>
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-person-circle"></i></span>
+        <div>
+            <h1>Panel del Cliente</h1>
+            <p>Bienvenido(a), <%= sesion.nombre %></p>
+        </div>
+    </div>
+
+    <p class="text-muted reveal">Desde aquí puedes gestionar tus pedidos, editar tus datos y ver tu historial de navegación.</p>
+
+    <div class="row g-3">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 0">
+            <a href="/catalogo" class="accion vidrio" style="--c1: #2d6a4f; --c2: #52b788">
+                <span class="a-icono"><i class="bi bi-shop"></i></span>
+                <div><strong>Ir a comprar</strong><small>Explora el catálogo</small></div>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 1">
+            <a href="/usuario/domicilios" class="accion vidrio" style="--c1: #bc6c25; --c2: #e9a23b">
+                <span class="a-icono"><i class="bi bi-truck"></i></span>
+                <div><strong>Mis Pedidos</strong><small>Sigue tus domicilios</small></div>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 2">
+            <a href="/usuario/perfil" class="accion vidrio" style="--c1: #7b4fc4; --c2: #b794f4">
+                <span class="a-icono"><i class="bi bi-pencil"></i></span>
+                <div><strong>Editar mis datos</strong><small>Perfil y dirección</small></div>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 3">
+            <a href="/usuario/historial" class="accion vidrio" style="--c1: #0c6a94; --c2: #4aa8d8">
+                <span class="a-icono"><i class="bi bi-clock-history"></i></span>
+                <div><strong>Historial</strong><small>Páginas que visitaste</small></div>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 4">
+            <a href="/logout" class="accion vidrio" style="--c1: #c9184a; --c2: #ff8fa3">
+                <span class="a-icono"><i class="bi bi-box-arrow-right"></i></span>
+                <div><strong>Cerrar sesión</strong><small>Salir de tu cuenta</small></div>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
         </div>
     </div>
 </div>

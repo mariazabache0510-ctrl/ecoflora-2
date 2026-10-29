@@ -1,39 +1,51 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <div class="card shadow border-0" style="border-radius: 20px;">
-        <div class="card-header bg-dark text-white" style="border-radius: 20px 20px 0 0;">
-            <h4 class="mb-0"><i class="bi bi-people me-2"></i>Administración de Usuarios</h4>
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-people"></i></span>
+        <div>
+            <h1>Administración de Usuarios</h1>
+            <p><%= usuarios.length %> cuenta<%= usuarios.length === 1 ? '' : 's' %> registrada<%= usuarios.length === 1 ? '' : 's' %></p>
         </div>
-        <div class="card-body p-4">
-            <% if (eliminado) { %><div class="alert alert-success">Usuario eliminado correctamente.</div><% } %>
-            <% if (actualizado) { %><div class="alert alert-success">Usuario actualizado correctamente.</div><% } %>
-            <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped align-middle">
-                    <thead class="table-dark"><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Ciudad</th><th>Rol</th><th style="width: 180px;">Acciones</th></tr></thead>
-                    <tbody>
-                        <% usuarios.forEach(function(usuario) { %>
-                        <tr>
-                            <td><%= usuario.nombre %></td>
-                            <td><%= usuario.usuario %></td>
-                            <td><%= usuario.email %></td>
-                            <td><%= usuario.telefono || '' %></td>
-                            <td><%= usuario.ciudad || '' %></td>
-                            <td><span class="badge bg-<%= usuario.rol === 'admin' ? 'danger' : 'info' %>"><%= usuario.rol %></span></td>
-                            <td>
-                                <a href="/admin/usuarios/<%= usuario.id_usuario %>/editar" class="btn btn-warning btn-sm"><i class="bi bi-pencil"></i> Editar</a>
-                                <% if (usuario.id_usuario !== sesion.id_usuario) { %>
-                                <a href="/admin/usuarios/<%= usuario.id_usuario %>/eliminar" class="btn btn-danger btn-sm" onclick="return confirm('¿Seguro que deseas eliminar este usuario?');"><i class="bi bi-trash"></i> Eliminar</a>
-                                <% } %>
-                            </td>
-                        </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-            </div>
-            <a href="/admin" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Volver al panel</a>
+    </div>
+
+    <% if (eliminado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Usuario eliminado correctamente.</div><% } %>
+    <% if (actualizado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Usuario actualizado correctamente.</div><% } %>
+    <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+
+    <div class="tabla-tarjeta vidrio reveal">
+        <div class="table-responsive">
+            <table class="table tabla-eco align-middle">
+                <thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Teléfono</th><th>Ciudad</th><th>Rol</th><th style="width: 190px;">Acciones</th></tr></thead>
+                <tbody>
+                    <% usuarios.forEach(function(usuario, i) { %>
+                    <tr style="--i: <%= i %>">
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="avatar-tabla"><%= String(usuario.nombre || usuario.usuario || '?').trim().charAt(0).toUpperCase() %></span>
+                                <span><%= usuario.nombre %></span>
+                            </div>
+                        </td>
+                        <td><%= usuario.usuario %></td>
+                        <td><%= usuario.email %></td>
+                        <td><%= usuario.telefono || '' %></td>
+                        <td><%= usuario.ciudad || '' %></td>
+                        <td><span class="rol-pill rol-<%= usuario.rol %>"><%= usuario.rol %></span></td>
+                        <td>
+                            <a href="/admin/usuarios/<%= usuario.id_usuario %>/editar" class="btn btn-tierra btn-sm"><i class="bi bi-pencil"></i> Editar</a>
+                            <% if (usuario.id_usuario !== sesion.id_usuario) { %>
+                            <a href="/admin/usuarios/<%= usuario.id_usuario %>/eliminar" class="btn btn-peligro btn-sm" onclick="return confirm('¿Seguro que deseas eliminar este usuario?');"><i class="bi bi-trash"></i> Eliminar</a>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
         </div>
+    </div>
+
+    <div class="acciones-pie">
+        <a href="/admin" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
     </div>
 </div>
 

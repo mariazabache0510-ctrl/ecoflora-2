@@ -1,23 +1,36 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <h2 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-truck me-2"></i>Pedidos / Domicilios</h2>
-    <div class="card shadow-sm border-0" style="border-radius: 15px;">
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-truck"></i></span>
+        <div>
+            <h1>Pedidos / Domicilios</h1>
+            <p><%= pedidos.length %> pedido<%= pedidos.length === 1 ? '' : 's' %> en total</p>
+        </div>
+    </div>
+
+    <% if (!pedidos.length) { %>
+    <div class="vacio vidrio reveal">
+        <i class="bi bi-box-seam"></i>
+        <p class="mt-3 text-muted mb-0">Aún no hay pedidos registrados.</p>
+    </div>
+    <% } else { %>
+    <div class="tabla-tarjeta vidrio reveal">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="table-ecoflora"><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acción</th></tr></thead>
+            <table class="table tabla-eco align-middle">
+                <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acción</th></tr></thead>
                 <tbody>
-                    <% pedidos.forEach(function(pedido) { %>
-                    <tr>
-                        <td><%= pedido.id_pedido %></td>
+                    <% pedidos.forEach(function(pedido, i) { %>
+                    <tr style="--i: <%= i %>">
+                        <td><strong><%= pedido.id_pedido %></strong></td>
                         <td><%= pedido.cliente %><br><small class="text-muted"><%= pedido.email %></small></td>
-                        <td>$<%= formatPrice(pedido.total) %></td>
-                        <td><span class="badge bg-<%= COLORES_ESTADO[pedido.estado] %>"><%= pedido.estado %></span></td>
+                        <td><strong>$<%= formatPrice(pedido.total) %></strong></td>
+                        <td><span class="estado estado-<%= pedido.estado %>"><%= String(pedido.estado).replace('_', ' ') %></span></td>
                         <td><%= formatDate(pedido.fecha_pedido) %></td>
                         <td>
                             <form method="POST" action="/admin/pedidos" class="d-flex gap-2">
                                 <input type="hidden" name="id_pedido" value="<%= pedido.id_pedido %>">
-                                <select name="estado" class="form-select form-select-sm" style="width: 130px;">
+                                <select name="estado" class="form-select form-select-sm" style="width: 140px;">
                                     <% ESTADOS.forEach(function(estado) { %>
                                         <option value="<%= estado %>" <%= pedido.estado === estado ? 'selected' : '' %>><%= ucfirst(estado) %></option>
                                     <% }) %>
@@ -31,7 +44,11 @@
             </table>
         </div>
     </div>
-    <a href="/admin" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left me-1"></i>Volver al panel</a>
+    <% } %>
+
+    <div class="acciones-pie">
+        <a href="/admin" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
+    </div>
 </div>
 
 <%- include(partial('footer')) %>

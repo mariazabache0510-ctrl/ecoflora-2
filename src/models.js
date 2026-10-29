@@ -5,6 +5,11 @@ const counterSchema = new mongoose.Schema(
   { versionKey: false, collection: 'counters' }
 );
 
+const metaSchema = new mongoose.Schema(
+  { _id: String, value: { type: String, default: '' } },
+  { versionKey: false, collection: 'meta' }
+);
+
 const usuarioSchema = new mongoose.Schema(
   {
     id_usuario: { type: Number, required: true, unique: true },
@@ -130,6 +135,7 @@ const contactoSchema = new mongoose.Schema(
 );
 
 const Counter = mongoose.model('Counter', counterSchema);
+const Meta = mongoose.model('Meta', metaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 const Categoria = mongoose.model('Categoria', categoriaSchema);
 const Planta = mongoose.model('Planta', plantaSchema);
@@ -157,6 +163,7 @@ async function syncCounter(name, ids) {
 
 module.exports = {
   Counter,
+  Meta,
   Usuario,
   Categoria,
   Planta,

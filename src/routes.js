@@ -86,19 +86,27 @@ function registerRoutes(app) {
       const id = parseInt(req.params.id, 10) || 0;
       const planta = await Planta.findOne({ id_planta: id }).lean();
       if (!planta) return res.render('planta', { planta: null, relacionadas: [] });
-      const named = await withCategoryNames([planta]);
       const relacionadas = await Planta.find({
         id_categoria: planta.id_categoria,
         id_planta: { $ne: id }
-      }).limit(3).lean();
-      return res.render('planta', { planta: named.plantas[0], relacionadas });
+      }).sort({ destacada: -1, id_planta: 1 }).limit(4).lean();
+      const named = await withCategoryNames([planta, ...relacionadas]);
+      return res.render('planta', {
+        planta: named.plantas[0],
+        relacionadas: named.plantas.slice(1)
+      });
     } catch (error) {
       return next(error);
     }
   });
 
-  app.get('/nosotros', (req, res) => {
-    res.render('nosotros');
+  app.get('/nosotros', async (req, res, next) => {
+    try {
+      const destacadas = await Planta.find({ destacada: true }).sort({ id_planta: 1 }).limit(3).lean();
+      res.render('nosotros', { destacadas });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get('/contacto', (req, res) => {

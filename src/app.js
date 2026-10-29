@@ -13,6 +13,7 @@ const {
   ucfirst,
   formatDate,
   plantImage,
+  plantImg,
   pageName,
   ESTADOS,
   COLORES_ESTADO
@@ -55,6 +56,7 @@ function createApp() {
   app.locals.ucfirst = ucfirst;
   app.locals.formatDate = formatDate;
   app.locals.plantImage = plantImage;
+  app.locals.plantImg = plantImg;
   app.locals.ESTADOS = ESTADOS;
   app.locals.COLORES_ESTADO = COLORES_ESTADO;
   app.locals.partial = (name) => path.join(viewsDir, 'partials', `${name}.ejs`);
@@ -70,7 +72,13 @@ function createApp() {
   });
 
   app.use(express.urlencoded({ extended: true }));
-  app.use(express.static(path.join(__dirname, '..', 'public')));
+  app.use(express.static(path.join(__dirname, '..', 'public'), {
+    setHeaders(res, filePath) {
+      if (filePath.includes(`${path.sep}img${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800');
+      }
+    }
+  }));
   app.use(session({
     secret: process.env.SESSION_SECRET || 'ecoflora-dev-secret',
     resave: false,

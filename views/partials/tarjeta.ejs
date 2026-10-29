@@ -1,0 +1,40 @@
+<%# Tarjeta de planta. Datos: planta (con `categoria` opcional) e `i` opcional para el retraso escalonado. %>
+<%
+    const retraso = typeof i === 'number' ? i : 0;
+    const descripcion = String(planta.descripcion || '');
+    const resumen = descripcion.length > 90 ? excerpt(descripcion, 90).trimEnd() + '…' : descripcion;
+%>
+<article class="tarjeta-planta reveal" style="--i: <%= retraso %>" data-tilt>
+    <a class="tp-media" href="/planta/<%= planta.id_planta %>" aria-label="Ver detalle de <%= planta.nombre %>">
+        <%- plantImg(planta, { class: 'tp-img', width: 600, height: 630 }) %>
+        <span class="tp-velo"></span>
+        <% if (planta.categoria) { %><span class="chip chip-categoria"><%= planta.categoria %></span><% } %>
+        <% if (planta.destacada) { %><span class="chip chip-destacada"><i class="bi bi-star-fill"></i> Destacada</span><% } %>
+        <span class="tp-ver">Ver detalle <i class="bi bi-arrow-right"></i></span>
+    </a>
+    <div class="tp-cuerpo">
+        <h3 class="tp-nombre"><a href="/planta/<%= planta.id_planta %>"><%= planta.nombre %></a></h3>
+        <p class="tp-cientifico"><em><%= planta.nombre_cientifico %></em></p>
+        <p class="tp-desc"><%= resumen %></p>
+        <div class="tp-pie">
+            <div>
+                <span class="tp-precio">$<%= formatPrice(planta.precio) %></span>
+                <% if (planta.stock <= 0) { %>
+                    <small class="tp-stock agotado"><i class="bi bi-x-circle"></i> Agotada</small>
+                <% } else if (planta.stock <= 5) { %>
+                    <small class="tp-stock poco"><i class="bi bi-lightning-charge-fill"></i> Quedan <%= planta.stock %></small>
+                <% } else { %>
+                    <small class="tp-stock ok"><i class="bi bi-check-circle"></i> Disponible</small>
+                <% } %>
+            </div>
+            <% if (planta.stock > 0) { %>
+            <form method="POST" action="/carrito" class="tp-agregar" data-agregar>
+                <input type="hidden" name="accion" value="agregar">
+                <input type="hidden" name="id_planta" value="<%= planta.id_planta %>">
+                <input type="hidden" name="cantidad" value="1">
+                <button type="submit" class="tp-btn" aria-label="Añadir <%= planta.nombre %> al carrito" title="Añadir al carrito"><i class="bi bi-cart-plus"></i></button>
+            </form>
+            <% } %>
+        </div>
+    </div>
+</article>

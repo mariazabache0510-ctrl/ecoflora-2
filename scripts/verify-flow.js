@@ -59,32 +59,55 @@ async function main() {
   assert(health.status === 200, 'health responde 200');
 
   const home = await (await fetch(base + '/', { headers: { Accept: 'text/html' } })).text();
-  assert(home.includes('Pothos Dorado'), 'inicio muestra Pothos');
-  assert(home.includes('Monstera Deliciosa'), 'inicio muestra Monstera');
-  assert(home.includes('$25.000'), 'precio con separador de miles');
-  assert(home.includes('Suculentas'), 'inicio muestra categorías');
-  assert(home.includes('/css/estilos.css'), 'sirve la hoja de estilos');
+  assert(home.includes('Monstera deliciosa'), 'inicio muestra la Monstera');
+  assert(home.includes('Lavanda'), 'inicio muestra la Lavanda destacada');
+  assert(home.includes('$85.000'), 'precio con separador de miles');
+  assert(home.includes('Suculentas') && home.includes('Florales'), 'inicio muestra las categorías del dump');
+  assert(home.includes('/css/estilos.css') && home.includes('/js/app.js'), 'sirve la hoja de estilos y el script');
+  assert(home.includes('data-jardin') && home.includes('/img/fondo/lejos.svg'), 'inicio incluye el fondo dinámico de jardín');
+  assert(home.includes('nav-indicador') && home.includes('class="logo-eco'), 'inicio incluye la navbar y el logo animados');
+  assert(home.includes('tarjeta-planta') && home.includes('tarjeta-categoria'), 'inicio usa las tarjetas rediseñadas');
+  assert(!home.includes('placehold'), 'ya no se usan imágenes de relleno');
+  assert(home.includes('/img/plantas/monstera_deliciosa.webp'), 'la tarjeta apunta a la foto real de la planta');
+
+  const fotos = ['monstera_deliciosa.webp', 'manzanilla.jpg.webp', 'Orquideas_phalaenopsis.jpg', '_default.svg'];
+  for (const foto of fotos) {
+    const respuesta = await fetch(base + '/img/plantas/' + foto);
+    assert(respuesta.status === 200 && (respuesta.headers.get('content-type') || '').startsWith('image/'), 'la foto ' + foto + ' se sirve como imagen');
+  }
+  for (const capa of ['lejos', 'medio', 'cerca', 'esquina']) {
+    const respuesta = await fetch(base + '/img/fondo/' + capa + '.svg');
+    assert(respuesta.status === 200, 'la capa del fondo ' + capa + ' se sirve');
+  }
 
   const guest = createClient();
   const catalogo = await guest.request('GET', '/catalogo?busqueda=Lavanda');
   assert(catalogo.status === 200 && catalogo.text.includes('Lavanda'), 'búsqueda encuentra Lavanda');
-  assert(!catalogo.text.includes('Monstera Deliciosa'), 'búsqueda no mezcla otras plantas');
+  assert(!catalogo.text.includes('Monstera deliciosa'), 'búsqueda no mezcla otras plantas');
+
+  const completo = await guest.request('GET', '/catalogo');
+  const tarjetas = (completo.text.match(/class="tarjeta-planta/g) || []).length;
+  assert(tarjetas === 22, 'el catálogo muestra las 22 plantas del dump (hay ' + tarjetas + ')');
+  assert(completo.text.includes('chip-filtro'), 'el catálogo muestra los filtros por categoría');
 
   const suculentas = await guest.request('GET', '/catalogo?categoria=3');
-  assert(suculentas.text.includes('Echeveria Elegans'), 'filtro de suculentas');
-  assert(!suculentas.text.includes('Palma Areca'), 'el filtro oculta otras categorías');
+  assert(suculentas.text.includes('Echeveria elegans') && suculentas.text.includes('Aloe vera'), 'filtro de suculentas');
+  assert(!suculentas.text.includes('Palma areca'), 'el filtro oculta otras categorías');
 
   const vacio = await guest.request('GET', '/catalogo?busqueda=zzzz-no-existe');
   assert(vacio.text.includes('No encontramos plantas'), 'búsqueda sin resultados');
 
-  const ficha = await guest.request('GET', '/planta/2');
-  assert(ficha.text.includes('Monstera deliciosa') && ficha.text.includes('Stock: 8'), 'ficha de la monstera');
+  const ficha = await guest.request('GET', '/planta/1');
+  assert(ficha.text.includes('Monstera deliciosa') && ficha.text.includes('Stock: 15'), 'ficha de la monstera');
+  assert(ficha.text.includes('Luz indirecta, riego moderado') && ficha.text.includes('data-stepper'), 'la ficha muestra los cuidados y el selector de cantidad');
+  assert(ficha.text.includes('También te puede interesar') && ficha.text.includes('Costilla de Adán'), 'la ficha muestra plantas relacionadas');
 
   const missing = await guest.request('GET', '/planta/99');
   assert(missing.text.includes('Planta no encontrada'), 'planta inexistente');
 
-  const added = await follow(guest, 'POST', '/carrito', { accion: 'agregar', id_planta: '2', cantidad: '2' });
-  assert(added.status === 200 && added.text.includes('Monstera Deliciosa') && added.text.includes('$170.000'), 'carrito de invitado');
+  const added = await follow(guest, 'POST', '/carrito', { accion: 'agregar', id_planta: '1', cantidad: '2' });
+  assert(added.status === 200 && added.text.includes('Monstera deliciosa') && added.text.includes('$170.000'), 'carrito de invitado');
+  assert(added.text.includes('Ingresa para continuar') && added.text.includes('/img/plantas/monstera_deliciosa.webp'), 'el carrito invita a ingresar y muestra la foto');
 
   const registro = await guest.request('POST', '/registro', {
     nombre: 'Cliente Prueba',
@@ -113,9 +136,9 @@ async function main() {
   const login = await follow(guest, 'POST', '/login', { usuario: 'clienteprueba', password: 'clave123' });
   assert(login.text.includes('Mi Panel'), 'login de cliente');
   const carrito = await guest.request('GET', '/carrito');
-  assert(carrito.text.includes('Monstera Deliciosa'), 'el carrito de invitado se fusiona al ingresar');
+  assert(carrito.text.includes('Monstera deliciosa') && carrito.text.includes('Solicitar domicilio'), 'el carrito de invitado se fusiona al ingresar');
 
-  await follow(guest, 'POST', '/carrito', { actualizar: '1', cant_2: '1' });
+  await follow(guest, 'POST', '/carrito', { actualizar: '1', cant_1: '1' });
   const confirmar = await guest.request('GET', '/confirmar-pedido');
   assert(confirmar.text.includes('Confirmar domicilio') && confirmar.text.includes('$85.000'), 'resumen del domicilio');
 
@@ -126,10 +149,10 @@ async function main() {
     notas: 'Portería'
   });
   assert(pedido.text.includes('Pedido realizado con éxito'), 'el pedido queda confirmado');
-  assert(pedido.text.includes('Monstera Deliciosa') && pedido.text.includes('Calle 45 #12-30'), 'el domicilio guarda el detalle');
+  assert(pedido.text.includes('Monstera deliciosa') && pedido.text.includes('Calle 45 #12-30'), 'el domicilio guarda el detalle');
 
-  const fichaDespues = await guest.request('GET', '/planta/2');
-  assert(fichaDespues.text.includes('Stock: 7'), 'el stock baja en una unidad');
+  const fichaDespues = await guest.request('GET', '/planta/1');
+  assert(fichaDespues.text.includes('Stock: 14'), 'el stock baja en una unidad');
 
   const perfil = await follow(guest, 'POST', '/usuario/perfil', {
     nombre: 'Cliente Editado',
@@ -161,10 +184,11 @@ async function main() {
   const admin = createClient();
   const panel = await follow(admin, 'POST', '/login', { usuario: 'admin', password: 'Admin123' });
   assert(panel.text.includes('Panel de Administración'), 'login de administrador');
-  assert(panel.text.includes('>6<') || panel.text.includes('>6</h3>'), 'el panel cuenta las plantas');
+  assert(panel.text.includes('>22<'), 'el panel cuenta las 22 plantas');
+  assert(panel.text.includes('data-contar'), 'el panel usa los contadores animados');
 
   const pedidos = await admin.request('GET', '/admin/pedidos');
-  assert(pedidos.text.includes('Cliente Editado') && pedidos.text.includes('pendiente'), 'el admin ve el pedido pendiente');
+  assert(pedidos.text.includes('Cliente Editado') && pedidos.text.includes('estado estado-pendiente'), 'el admin ve el pedido pendiente');
   const idMatch = pedidos.text.match(/name="id_pedido" value="(\d+)"/);
   assert(idMatch, 'el pedido tiene id');
   await follow(admin, 'POST', '/admin/pedidos', {
@@ -173,7 +197,7 @@ async function main() {
     cambiar_estado: '1'
   });
   const pedidos2 = await admin.request('GET', '/admin/pedidos');
-  assert(pedidos2.text.includes('entregado'), 'el admin cambia el estado');
+  assert(pedidos2.text.includes('estado estado-entregado') && !pedidos2.text.includes('estado estado-pendiente'), 'el admin cambia el estado');
 
   const usuarios = await admin.request('GET', '/admin/usuarios');
   assert(usuarios.text.includes('clienteprueba'), 'el admin lista clientes');
@@ -202,10 +226,16 @@ async function main() {
   const usuarios3 = await admin.request('GET', '/admin/usuarios');
   assert(!usuarios3.text.includes('clienteprueba'), 'el admin elimina al cliente');
 
+  const nosotros = await guest.request('GET', '/nosotros');
+  assert(nosotros.text.includes('Somos EcoFlora') && nosotros.text.includes('nosotros-collage') && nosotros.text.includes('data-contar'), 'la página Nosotros usa el collage y los contadores');
+
+  const noExiste = await guest.request('GET', '/esto-no-existe');
+  assert(noExiste.status === 404 && noExiste.text.includes('Página no encontrada'), 'la página 404 rediseñada');
+
   const css = await fetch(base + '/css/estilos.css');
-  assert(css.status === 200 && (await css.text()).includes('--verde-oscuro'), 'el CSS original responde');
+  assert(css.status === 200 && (await css.text()).includes('--verde-oscuro'), 'el CSS responde');
   const js = await fetch(base + '/js/app.js');
-  assert(js.status === 200 && (await js.text()).includes('DOMContentLoaded'), 'el JavaScript original responde');
+  assert(js.status === 200 && (await js.text()).includes('DOMContentLoaded'), 'el JavaScript responde');
 
   console.log('Flujo local completo.');
 }

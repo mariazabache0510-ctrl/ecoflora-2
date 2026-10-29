@@ -1,32 +1,69 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
+<div class="container contenedor-pagina">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-lg border-0" style="border-radius: 20px;">
-                <div class="card-header bg-white border-0 text-center pt-4"><h4 class="fw-bold">Crear cuenta</h4></div>
-                <div class="card-body px-4">
-                    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
-                    <% if (exito) { %><div class="alert alert-success"><%= exito %></div><% } %>
-                    <form method="POST" action="/registro">
-                        <div class="mb-3"><label class="form-label">Nombre completo *</label><input type="text" name="nombre" class="form-control" required></div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label">Usuario *</label><input type="text" name="usuario" class="form-control" required></div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Email *</label><input type="email" name="email" class="form-control" required></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label">Teléfono</label><input type="text" name="telefono" class="form-control"></div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Ciudad</label><input type="text" name="ciudad" class="form-control"></div>
-                        </div>
-                        <div class="mb-3"><label class="form-label">Dirección</label><input type="text" name="direccion" class="form-control" placeholder="Calle, número, barrio"></div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label">Contraseña *</label><input type="password" name="password" class="form-control" required></div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Confirmar *</label><input type="password" name="confirmar" class="form-control" required></div>
-                        </div>
-                        <button type="submit" class="btn btn-ecoflora w-100">Registrarme</button>
-                    </form>
-                    <div class="text-center mt-3"><small>¿Ya tienes cuenta? <a href="/login" class="text-decoration-none fw-bold" style="color: var(--verde-medio);">Ingresa aquí</a></small></div>
+        <div class="col-md-10 col-lg-8 col-xl-7">
+            <div class="auth-tarjeta vidrio reveal">
+                <div class="auth-cabecera">
+                    <%- include(partial('logo'), { uid: 'registro' }) %>
+                    <h1>Crear cuenta</h1>
+                    <p>Únete al vivero y recibe tus plantas en casa</p>
                 </div>
+
+                <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+                <% if (exito) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><%= exito %></div><% } %>
+
+                <form method="POST" action="/registro">
+                    <div class="mb-3">
+                        <label class="form-label" for="nombre">Nombre completo *</label>
+                        <div class="campo"><i class="bi bi-person-vcard"></i><input type="text" id="nombre" name="nombre" class="form-control" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="usuario">Usuario *</label>
+                            <div class="campo"><i class="bi bi-at"></i><input type="text" id="usuario" name="usuario" class="form-control" autocomplete="username" required></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="email">Email *</label>
+                            <div class="campo"><i class="bi bi-envelope"></i><input type="email" id="email" name="email" class="form-control" autocomplete="email" required></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="telefono">Teléfono</label>
+                            <div class="campo"><i class="bi bi-telephone"></i><input type="text" id="telefono" name="telefono" class="form-control"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="ciudad">Ciudad</label>
+                            <div class="campo"><i class="bi bi-geo-alt"></i><input type="text" id="ciudad" name="ciudad" class="form-control"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="direccion">Dirección</label>
+                        <div class="campo"><i class="bi bi-house-door"></i><input type="text" id="direccion" name="direccion" class="form-control" placeholder="Calle, número, barrio"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="password">Contraseña *</label>
+                            <div class="campo con-ojo">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" required>
+                                <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label" for="confirmar">Confirmar *</label>
+                            <div class="campo con-ojo">
+                                <i class="bi bi-shield-lock"></i>
+                                <input type="password" id="confirmar" name="confirmar" class="form-control" autocomplete="new-password" required>
+                                <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-flower2 me-2"></i>Registrarme</button>
+                </form>
+
+                <p class="auth-pie">¿Ya tienes cuenta? <a href="/login">Ingresa aquí</a></p>
             </div>
         </div>
     </div>

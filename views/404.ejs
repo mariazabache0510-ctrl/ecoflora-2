@@ -1,10 +1,15 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5 text-center">
-    <i class="bi bi-flower1 fs-1" style="color: var(--verde-medio);"></i>
-    <h1 class="fw-bold mt-3" style="color: var(--verde-oscuro);">Página no encontrada</h1>
-    <p class="text-muted">Esa dirección no existe en EcoFlora.</p>
-    <a href="/" class="btn btn-ecoflora">Volver al inicio</a>
+<div class="container contenedor-pagina">
+    <div class="vacio vidrio reveal" style="padding: 4rem 1rem;">
+        <i class="bi bi-flower1" style="font-size: 4.5rem;"></i>
+        <h1 class="seccion-titulo mt-3">Página no encontrada</h1>
+        <p class="text-muted mb-4">Esa dirección no existe en EcoFlora.</p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a href="/" class="btn btn-ecoflora btn-lg"><i class="bi bi-house-door me-2"></i>Volver al inicio</a>
+            <a href="/catalogo" class="btn btn-outline-ecoflora btn-lg">Ver catálogo</a>
+        </div>
+    </div>
 </div>
 
 <%- include(partial('footer')) %>

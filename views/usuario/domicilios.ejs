@@ -1,34 +1,52 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <h2 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-truck me-2"></i>Mis Domicilios</h2>
-    <% if (exito) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>¡Pedido realizado con éxito!</div><% } %>
-    <% if (!pedidos.length) { %>
-        <div class="text-center py-5"><i class="bi bi-box-seam fs-1 text-muted"></i><p class="mt-3 text-muted">No tienes pedidos aún.</p><a href="/catalogo" class="btn btn-ecoflora">Ir a comprar</a></div>
-    <% } else { %>
-        <div class="row g-4">
-            <% pedidos.forEach(function(pedido) { %>
-            <div class="col-12">
-                <div class="card shadow-sm border-0" style="border-radius: 15px;">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <div><small class="text-muted">Pedido #<%= pedido.id_pedido %></small><span class="ms-2 badge bg-<%= COLORES_ESTADO[pedido.estado] %>"><%= pedido.estado %></span></div>
-                        <small class="text-muted"><%= formatDate(pedido.fecha_pedido) %></small>
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-1"><strong>Envío a:</strong> <%= pedido.direccion_envio %>, <%= pedido.ciudad_envio || '' %></p>
-                        <p class="mb-3"><i class="bi bi-telephone me-1"></i><%= pedido.telefono_contacto || '' %></p>
-                        <ul class="list-group list-group-flush">
-                            <% (pedido.detalle || []).forEach(function(linea) { %>
-                            <li class="list-group-item px-0 d-flex justify-content-between"><span><%= linea.nombre %> x<%= linea.cantidad %></span><span>$<%= formatPrice(linea.precio_unitario * linea.cantidad) %></span></li>
-                            <% }) %>
-                        </ul>
-                        <div class="text-end mt-3"><strong class="fs-5" style="color: var(--verde-oscuro);">Total: $<%= formatPrice(pedido.total) %></strong></div>
-                    </div>
-                </div>
-            </div>
-            <% }) %>
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-truck"></i></span>
+        <div>
+            <h1>Mis Domicilios</h1>
+            <p>Sigue el estado de tus pedidos</p>
         </div>
+    </div>
+
+    <% if (exito) { %>
+    <div class="alert alert-success exito-pedido"><i class="bi bi-check-circle-fill"></i><span>¡Pedido realizado con éxito!</span></div>
     <% } %>
+
+    <% if (!pedidos.length) { %>
+    <div class="vacio vidrio reveal">
+        <i class="bi bi-box-seam"></i>
+        <p class="mt-3 text-muted">No tienes pedidos aún.</p>
+        <a href="/catalogo" class="btn btn-ecoflora"><i class="bi bi-shop me-2"></i>Ir a comprar</a>
+    </div>
+    <% } else { %>
+    <% pedidos.forEach(function(pedido, i) { %>
+    <article class="pedido-tarjeta vidrio reveal" style="--i: <%= i %>">
+        <div class="pedido-cabecera">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <strong>Pedido #<%= pedido.id_pedido %></strong>
+                <span class="estado estado-<%= pedido.estado %>"><%= String(pedido.estado).replace('_', ' ') %></span>
+            </div>
+            <small class="text-muted"><i class="bi bi-calendar3 me-1"></i><%= formatDate(pedido.fecha_pedido) %></small>
+        </div>
+        <div class="pedido-cuerpo">
+            <p class="mb-1"><strong>Envío a:</strong> <%= pedido.direccion_envio %>, <%= pedido.ciudad_envio || '' %></p>
+            <p class="mb-3"><i class="bi bi-telephone me-1"></i><%= pedido.telefono_contacto || '' %></p>
+            <% (pedido.detalle || []).forEach(function(linea) { %>
+            <div class="pedido-linea"><span><%= linea.nombre %> x<%= linea.cantidad %></span><span>$<%= formatPrice(linea.precio_unitario * linea.cantidad) %></span></div>
+            <% }) %>
+            <div class="resumen-total">
+                <span>Total:</span>
+                <strong>$<%= formatPrice(pedido.total) %></strong>
+            </div>
+        </div>
+    </article>
+    <% }) %>
+    <% } %>
+
+    <div class="acciones-pie">
+        <a href="/usuario" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
+    </div>
 </div>
 
 <%- include(partial('footer')) %>

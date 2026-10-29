@@ -1,30 +1,46 @@
 </main>
 
-<footer class="footer-ecoflora mt-5">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <h5 class="text-white mb-3"><i class="bi bi-flower1 me-2"></i>EcoFlora</h5>
-                <p>Conectamos tu hogar con la naturaleza. Las mejores plantas, directamente de nuestro vivero a tu puerta.</p>
+<footer class="pie-eco">
+    <div class="pie-ola" aria-hidden="true">
+        <svg viewBox="0 0 2880 90" preserveAspectRatio="none" focusable="false">
+            <path class="ola ola-1" d="M0 45 C90 15 270 15 360 45 C450 75 630 75 720 45 C810 15 990 15 1080 45 C1170 75 1350 75 1440 45 C1530 15 1710 15 1800 45 C1890 75 2070 75 2160 45 C2250 15 2430 15 2520 45 C2610 75 2790 75 2880 45 V90 H0Z"/>
+        </svg>
+        <svg viewBox="0 0 2880 90" preserveAspectRatio="none" focusable="false">
+            <path class="ola ola-2" d="M0 55 C120 85 240 85 360 55 C480 25 600 25 720 55 C840 85 960 85 1080 55 C1200 25 1320 25 1440 55 C1560 85 1680 85 1800 55 C1920 25 2040 25 2160 55 C2280 85 2400 85 2520 55 C2640 25 2760 25 2880 55 V90 H0Z"/>
+        </svg>
+    </div>
+    <div class="pie-cuerpo">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <a class="marca marca-pie" href="/" aria-label="EcoFlora, ir al inicio">
+                        <span class="marca-logo"><%- include(partial('logo'), { uid: 'pie' }) %></span>
+                        <span class="marca-texto"><span class="marca-nombre-pie">EcoFlora</span><small class="marca-lema">Vivero · Plantas y flores</small></span>
+                    </a>
+                    <p class="pie-texto mt-3">Conectamos tu hogar con la naturaleza. Las mejores plantas, directamente de nuestro vivero a tu puerta.</p>
+                </div>
+                <div class="col-6 col-lg-3 offset-lg-1">
+                    <h5 class="pie-titulo">Enlaces rápidos</h5>
+                    <ul class="list-unstyled pie-enlaces">
+                        <li><a href="/catalogo"><i class="bi bi-arrow-right-short"></i>Catálogo</a></li>
+                        <li><a href="/nosotros"><i class="bi bi-arrow-right-short"></i>Quiénes somos</a></li>
+                        <li><a href="/contacto"><i class="bi bi-arrow-right-short"></i>Contacto</a></li>
+                        <li><a href="/carrito"><i class="bi bi-arrow-right-short"></i>Mi carrito</a></li>
+                    </ul>
+                </div>
+                <div class="col-6 col-lg-4">
+                    <h5 class="pie-titulo">Contacto</h5>
+                    <ul class="list-unstyled pie-contacto">
+                        <li><span class="pie-icono"><i class="bi bi-geo-alt"></i></span>Calle 123 #45-67, Bogotá</li>
+                        <li><span class="pie-icono"><i class="bi bi-telephone"></i></span>(601) 123-4567</li>
+                        <li><span class="pie-icono"><i class="bi bi-envelope"></i></span>hola@ecoflora.com</li>
+                    </ul>
+                </div>
             </div>
-            <div class="col-md-4 mb-4">
-                <h5 class="text-white mb-3">Enlaces rápidos</h5>
-                <ul class="list-unstyled">
-                    <li><a href="/catalogo" class="text-decoration-none text-white-50">Catálogo</a></li>
-                    <li><a href="/nosotros" class="text-decoration-none text-white-50">Quiénes somos</a></li>
-                    <li><a href="/contacto" class="text-decoration-none text-white-50">Contacto</a></li>
-                </ul>
+            <div class="pie-final">
+                <small>&copy; <%= year %> EcoFlora Vivero. Todos los derechos reservados.</small>
+                <a href="#" class="pie-subir" data-subir aria-label="Volver arriba"><i class="bi bi-arrow-up"></i></a>
             </div>
-            <div class="col-md-4 mb-4">
-                <h5 class="text-white mb-3">Contacto</h5>
-                <p><i class="bi bi-geo-alt me-2"></i>Calle 123 #45-67, Bogotá</p>
-                <p><i class="bi bi-telephone me-2"></i>(601) 123-4567</p>
-                <p><i class="bi bi-envelope me-2"></i>hola@ecoflora.com</p>
-            </div>
-        </div>
-        <hr class="border-secondary">
-        <div class="text-center pb-3">
-            <small>&copy; <%= year %> EcoFlora Vivero. Todos los derechos reservados.</small>
         </div>
     </div>
 </footer>

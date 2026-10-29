@@ -1,78 +1,91 @@
 <%- include(partial('header')) %>
 
-<% if (!planta) { %>
-<div class="container my-5"><div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Planta no encontrada.</div></div>
-<% } else { %>
-<div class="container my-5">
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/">Inicio</a></li>
-            <li class="breadcrumb-item"><a href="/catalogo">Catálogo</a></li>
-            <li class="breadcrumb-item active"><%= planta.nombre %></li>
-        </ol>
-    </nav>
-
-    <div class="row g-5">
-        <div class="col-lg-6">
-            <div class="detalle-imagen overflow-hidden">
-                <img src="<%= plantImage(planta.nombre, 'detail') %>" class="img-fluid w-100" alt="<%= planta.nombre %>" style="min-height: 400px; object-fit: cover;">
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <span class="badge-categoria mb-3 d-inline-block"><%= planta.categoria %></span>
-            <h1 class="fw-bold mb-2" style="color: var(--verde-oscuro);"><%= planta.nombre %></h1>
-            <p class="text-muted fst-italic fs-5 mb-3"><%= planta.nombre_cientifico %></p>
-            <h3 class="precio-planta mb-4">$<%= formatPrice(planta.precio) %></h3>
-            <p class="lead"><%- nl2br(planta.descripcion) %></p>
-            <div class="d-flex gap-3 mb-4">
-                <span class="badge bg-light text-dark border p-2"><i class="bi bi-box-seam me-1"></i>Stock: <%= planta.stock %> unidades</span>
-                <span class="badge bg-light text-dark border p-2"><i class="bi bi-truck me-1"></i>Domicilio disponible</span>
-            </div>
-            <form method="POST" action="/carrito" class="d-flex gap-3 align-items-center mb-5">
-                <input type="hidden" name="accion" value="agregar">
-                <input type="hidden" name="id_planta" value="<%= planta.id_planta %>">
-                <div class="input-group" style="width: 140px;">
-                    <button class="btn btn-outline-secondary" type="button" onclick="this.parentNode.querySelector('input').stepDown()"><i class="bi bi-dash"></i></button>
-                    <input type="number" name="cantidad" value="1" min="1" max="<%= planta.stock %>" class="form-control text-center">
-                    <button class="btn btn-outline-secondary" type="button" onclick="this.parentNode.querySelector('input').stepUp()"><i class="bi bi-plus"></i></button>
-                </div>
-                <button type="submit" class="btn btn-ecoflora btn-lg"><i class="bi bi-cart-plus me-2"></i>Añadir al carrito</button>
-            </form>
-            <div class="cuidados-box">
-                <h5 class="fw-bold mb-3"><i class="bi bi-heart-pulse me-2"></i>Cuidados recomendados</h5>
-                <% if (planta.cuidados) { %>
-                    <p class="mb-0"><%- nl2br(planta.cuidados) %></p>
-                <% } else { %>
-                    <p class="mb-0">Consulta con nuestros expertos para el cuidado ideal de esta planta.</p>
-                <% } %>
-            </div>
-        </div>
+<div class="container contenedor-pagina">
+    <% if (!planta) { %>
+    <div class="vacio vidrio reveal">
+        <i class="bi bi-emoji-frown"></i>
+        <h3 class="mt-3">Planta no encontrada.</h3>
+        <a href="/catalogo" class="btn btn-ecoflora mt-2"><i class="bi bi-grid me-2"></i>Volver al catálogo</a>
     </div>
+    <% } else { %>
+    <ul class="migas reveal" aria-label="Ruta de navegación">
+        <li><a href="/"><i class="bi bi-house-door"></i> Inicio</a></li>
+        <li><a href="/catalogo">Catálogo</a></li>
+        <li><span><%= planta.nombre %></span></li>
+    </ul>
 
-    <% if (relacionadas.length) { %>
-    <hr class="my-5">
-    <h3 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-stars me-2"></i>También te puede interesar</h3>
-    <div class="row g-4">
-        <% relacionadas.forEach(function(relacionada) { %>
-        <div class="col-md-4">
-            <div class="card card-planta h-100">
-                <div style="overflow: hidden; height: 220px;">
-                    <img src="<%= plantImage(relacionada.nombre) %>" class="card-img-top w-100 h-100" alt="<%= relacionada.nombre %>" style="object-fit: cover;">
+    <div class="row g-4 g-lg-5 align-items-start">
+        <div class="col-lg-6 reveal">
+            <div class="detalle-galeria">
+                <%- plantImg(planta, { eager: true, width: 800, height: 830 }) %>
+                <div class="chips">
+                    <% if (planta.categoria) { %><span class="chip chip-categoria"><%= planta.categoria %></span><% } %>
+                    <% if (planta.destacada) { %><span class="chip chip-destacada"><i class="bi bi-star-fill"></i> Destacada</span><% } %>
                 </div>
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title fw-bold"><%= relacionada.nombre %></h5>
-                    <p class="text-muted small"><em><%= relacionada.nombre_cientifico %></em></p>
-                    <div class="d-flex justify-content-between align-items-center mt-auto">
-                        <span class="precio-planta">$<%= formatPrice(relacionada.precio) %></span>
-                        <a href="/planta/<%= relacionada.id_planta %>" class="btn btn-sm btn-outline-ecoflora">Ver detalle</a>
+            </div>
+        </div>
+
+        <div class="col-lg-6 reveal" style="--i: 1">
+            <div class="detalle-panel vidrio">
+                <h1 class="detalle-nombre"><%= planta.nombre %></h1>
+                <p class="detalle-cientifico"><%= planta.nombre_cientifico %></p>
+
+                <div class="detalle-precio">$<%= formatPrice(planta.precio) %><small>COP</small></div>
+
+                <p class="detalle-desc"><%- nl2br(planta.descripcion) %></p>
+
+                <div class="datos-rapidos">
+                    <span class="dato-chip"><i class="bi bi-box-seam"></i>Stock: <%= planta.stock %> unidades</span>
+                    <% if (planta.categoria) { %><span class="dato-chip"><i class="bi bi-tag"></i><%= planta.categoria %></span><% } %>
+                </div>
+
+                <% if (planta.stock > 0) { %>
+                <form method="POST" action="/carrito" class="formulario-compra" data-agregar>
+                    <input type="hidden" name="accion" value="agregar">
+                    <input type="hidden" name="id_planta" value="<%= planta.id_planta %>">
+                    <div class="stepper" data-stepper>
+                        <button type="button" data-paso="-1" aria-label="Menos"><i class="bi bi-dash-lg"></i></button>
+                        <input type="number" name="cantidad" value="1" min="1" max="<%= planta.stock %>" aria-label="Cantidad">
+                        <button type="button" data-paso="1" aria-label="Más"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-lg flex-fill"><i class="bi bi-cart-plus me-2"></i>Añadir al carrito</button>
+                </form>
+                <% } else { %>
+                <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Esta planta está agotada por ahora.</div>
+                <% } %>
+
+                <div class="cuidados">
+                    <span class="cuidados-icono"><i class="bi bi-heart-pulse"></i></span>
+                    <div>
+                        <h2>Cuidados recomendados</h2>
+                        <% if (planta.cuidados) { %>
+                        <p><%- nl2br(planta.cuidados) %></p>
+                        <% } else { %>
+                        <p>Consulta con nuestros expertos para el cuidado ideal de esta planta.</p>
+                        <% } %>
                     </div>
                 </div>
             </div>
         </div>
-        <% }) %>
     </div>
+
+    <% if (relacionadas && relacionadas.length) { %>
+    <section class="mt-5 pt-3">
+        <div class="seccion-cabecera reveal">
+            <span class="seccion-etiqueta"><i class="bi bi-stars"></i>Te puede gustar</span>
+            <h2 class="seccion-titulo">También te puede interesar</h2>
+            <div class="divisor-hoja"><i class="bi bi-flower1"></i></div>
+        </div>
+        <div class="row g-4">
+            <% relacionadas.forEach(function(rel, i) { %>
+            <div class="col-sm-6 col-lg-3">
+                <%- include(partial('tarjeta'), { planta: rel, i: i }) %>
+            </div>
+            <% }) %>
+        </div>
+    </section>
+    <% } %>
     <% } %>
 </div>
-<% } %>
 
 <%- include(partial('footer')) %>

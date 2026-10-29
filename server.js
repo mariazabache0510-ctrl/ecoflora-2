@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { connect } = require('./src/db');
-const { importIfEmpty } = require('./src/importer');
+const { importIfEmpty, syncCatalog, ensureAdmin } = require('./src/importer');
 const { createApp } = require('./src/app');
 
 async function main() {
@@ -14,6 +14,9 @@ async function main() {
   const imported = await importIfEmpty();
   if (imported) {
     console.log('Base vacía: se importó el catálogo y se creó el administrador.');
+  } else if (await syncCatalog()) {
+    await ensureAdmin();
+    console.log('Catálogo actualizado desde data/ecoflora_full.sql.');
   }
   const port = Number(process.env.PORT) || 3000;
   const app = createApp();

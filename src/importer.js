@@ -1,6 +1,8 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const {
+  Meta,
   Usuario,
   Categoria,
   Planta,
@@ -8,6 +10,7 @@ const {
   Pedido,
   Historial,
   Contacto,
+  nextId,
   syncCounter
 } = require('./models');
 const { hashPassword } = require('./passwords');
@@ -26,10 +29,33 @@ const COLUMN_ORDERS = {
 const KNOWN_TABLES = new Set(Object.keys(COLUMN_ORDERS));
 const ESTADOS = new Set(['pendiente', 'confirmado', 'en_camino', 'entregado', 'cancelado']);
 
+const FULL_DUMP = path.join(__dirname, '..', 'data', 'ecoflora_full.sql');
+const BASE_DUMP = path.join(__dirname, '..', 'ecoflora_db.sql');
+const DUMP_HASH_KEY = 'dump_hash';
+
+const CATEGORY_ICONS = {
+  interior: 'bi-house-heart',
+  exterior: 'bi-tree',
+  suculentas: 'bi-droplet-half',
+  'aromáticas': 'bi-cup-hot',
+  aromaticas: 'bi-cup-hot',
+  florales: 'bi-flower2',
+  'orquídeas': 'bi-flower3',
+  orquideas: 'bi-flower3',
+  herramientas: 'bi-tools'
+};
+
+function categoryIcon(nombre) {
+  return CATEGORY_ICONS[String(nombre || '').trim().toLowerCase()] || 'bi-flower1';
+}
+
 function resolveSqlPath() {
-  const full = path.join(__dirname, '..', 'data', 'ecoflora_full.sql');
-  if (fs.existsSync(full)) return full;
-  return path.join(__dirname, '..', 'ecoflora_db.sql');
+  if (fs.existsSync(FULL_DUMP)) return FULL_DUMP;
+  return BASE_DUMP;
+}
+
+function hashText(sql) {
+  return crypto.createHash('sha256').update(sql).digest('hex');
 }
 
 function stripComments(sql) {
@@ -183,7 +209,7 @@ async function applyDump(bucket) {
       id_categoria: Number(row.id_categoria),
       nombre: text(row.nombre),
       descripcion: text(row.descripcion),
-      icono: text(row.icono) || 'bi-flower1'
+      icono: text(row.icono) || categoryIcon(row.nombre)
     }));
     await Categoria.deleteMany({});
     if (rows.length) await Categoria.insertMany(rows);
@@ -208,6 +234,8 @@ async function applyDump(bucket) {
     await Planta.deleteMany({});
     if (rows.length) await Planta.insertMany(rows);
     await syncCounter('plantas', rows.map((row) => row.id_planta));
+    // Los ids de planta pueden cambiar: los carritos guardados quedarían apuntando a otra planta.
+    if (!bucket.carrito) await Carrito.deleteMany({});
   }
 
   if (bucket.usuarios) {
@@ -320,17 +348,67 @@ async function applyDump(bucket) {
   }
 }
 
+async function rememberDump(sql) {
+  await Meta.findByIdAndUpdate(
+    DUMP_HASH_KEY,
+    { $set: { value: hashText(sql) } },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
+}
+
 async function importFile(filePath) {
   const sql = fs.readFileSync(filePath, 'utf8');
   const bucket = parseSqlDump(sql);
   await applyDump(bucket);
+  if (path.resolve(filePath) === FULL_DUMP) await rememberDump(sql);
   return bucket;
+}
+
+// Agrega los usuarios del script que aún no existen, sin tocar los que ya hay.
+async function mergeUsers(rows) {
+  const collation = { locale: 'es', strength: 2 };
+  let created = 0;
+  for (const row of rows || []) {
+    const usuario = text(row.usuario).trim();
+    const email = text(row.email).trim();
+    const password = text(row.password);
+    if (!usuario || !email || !password) continue;
+    const exists = await Usuario.findOne({ $or: [{ usuario }, { email }] }).collation(collation).lean();
+    if (exists) continue;
+    await Usuario.create({
+      id_usuario: await nextId('usuarios'),
+      nombre: text(row.nombre),
+      usuario,
+      email,
+      password,
+      telefono: text(row.telefono),
+      direccion: text(row.direccion),
+      ciudad: text(row.ciudad),
+      rol: row.rol === 'admin' ? 'admin' : 'cliente',
+      fecha_registro: parseDate(row.fecha_registro)
+    });
+    created += 1;
+  }
+  return created;
+}
+
+// Si data/ecoflora_full.sql cambió desde la última vez, actualiza el catálogo
+// (categorías y plantas) y suma los usuarios nuevos. No borra pedidos ni cuentas.
+async function syncCatalog() {
+  if (!fs.existsSync(FULL_DUMP)) return false;
+  const sql = fs.readFileSync(FULL_DUMP, 'utf8');
+  const current = await Meta.findById(DUMP_HASH_KEY).lean();
+  if (current && current.value === hashText(sql)) return false;
+  const bucket = parseSqlDump(sql);
+  await applyDump({ categorias: bucket.categorias, plantas: bucket.plantas });
+  await mergeUsers(bucket.usuarios);
+  await rememberDump(sql);
+  return true;
 }
 
 async function ensureAdmin() {
   const existing = await Usuario.findOne({ usuario: 'admin' }).collation({ locale: 'es', strength: 2 });
   if (existing) return existing;
-  const { nextId } = require('./models');
   const id = await nextId('usuarios');
   return Usuario.create({
     id_usuario: id,
@@ -360,5 +438,7 @@ module.exports = {
   parseSqlDump,
   importFile,
   ensureAdmin,
-  importIfEmpty
+  importIfEmpty,
+  syncCatalog,
+  categoryIcon
 };

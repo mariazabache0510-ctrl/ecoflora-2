@@ -1,63 +1,65 @@
 <%- include(partial('header')) %>
 
-<div class="container my-5">
-    <h2 class="fw-bold mb-4" style="color: var(--verde-oscuro);"><i class="bi bi-grid-3x3-gap me-2"></i>Catálogo de plantas</h2>
-    <div class="card shadow-sm border-0 mb-4 p-3" style="border-radius: 15px;">
-        <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label small text-muted">Buscar</label>
-                <input type="text" name="busqueda" class="form-control" placeholder="Nombre, científico..." value="<%= busqueda %>">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small text-muted">Categoría</label>
-                <select name="categoria" class="form-select">
-                    <option value="0">Todas</option>
-                    <% categorias.forEach(function(cat) { %>
-                        <option value="<%= cat.id_categoria %>" <%= Number(categoriaFiltro) === Number(cat.id_categoria) ? 'selected' : '' %>><%= cat.nombre %></option>
-                    <% }) %>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-ecoflora w-100">Filtrar</button>
-            </div>
-            <% if (categoriaFiltro || busqueda) { %>
-            <div class="col-md-2">
-                <a href="/catalogo" class="btn btn-outline-secondary w-100">Limpiar</a>
-            </div>
+<%
+    const terminoUrl = busqueda ? 'busqueda=' + encodeURIComponent(busqueda) : '';
+    const urlTodas = '/catalogo' + (terminoUrl ? '?' + terminoUrl : '');
+    const total = plantas.length;
+%>
+
+<div class="container contenedor-pagina">
+    <div class="catalogo-cabecera reveal">
+        <div>
+            <span class="seccion-etiqueta"><i class="bi bi-grid-3x3-gap"></i>Vivero</span>
+            <h1 class="seccion-titulo text-start mb-0">Catálogo de plantas</h1>
+        </div>
+        <span class="cuenta-resultados"><strong><%= total %></strong> planta<%= total === 1 ? '' : 's' %> encontrada<%= total === 1 ? '' : 's' %></span>
+    </div>
+
+    <div class="filtro vidrio reveal" style="--i: 1">
+        <form method="GET" action="/catalogo" class="row g-3 align-items-end">
+            <% if (categoriaFiltro) { %>
+            <input type="hidden" name="categoria" value="<%= categoriaFiltro %>">
             <% } %>
+            <div class="col-md-8">
+                <label class="form-label" for="busqueda">Buscar planta</label>
+                <div class="buscador">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="busqueda" name="busqueda" class="form-control" placeholder="Nombre, nombre científico o descripción" value="<%= busqueda %>">
+                </div>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-ecoflora flex-fill"><i class="bi bi-search me-2"></i>Buscar</button>
+                <% if (categoriaFiltro || busqueda) { %>
+                <a href="/catalogo" class="btn btn-suave"><i class="bi bi-x-lg me-1"></i>Limpiar</a>
+                <% } %>
+            </div>
+            <div class="col-12">
+                <div class="chips-filtro">
+                    <a href="<%= urlTodas %>" class="chip-filtro <%= !categoriaFiltro ? 'activo' : '' %>"><i class="bi bi-grid"></i>Todas</a>
+                    <% categorias.forEach(function(cat) { %>
+                    <a href="/catalogo?categoria=<%= cat.id_categoria %><%= terminoUrl ? '&' + terminoUrl : '' %>" class="chip-filtro <%= Number(categoriaFiltro) === cat.id_categoria ? 'activo' : '' %>"><i class="bi <%= cat.icono %>"></i><%= cat.nombre %></a>
+                    <% }) %>
+                </div>
+            </div>
         </form>
     </div>
 
+    <% if (plantas.length) { %>
     <div class="row g-4">
-        <% if (!plantas.length) { %>
-            <div class="col-12 text-center py-5">
-                <i class="bi bi-search fs-1 text-muted"></i>
-                <p class="text-muted mt-2">No encontramos plantas con esos criterios.</p>
-            </div>
-        <% } %>
-        <% plantas.forEach(function(planta) { %>
-        <div class="col-md-6 col-lg-4 col-xl-3">
-            <div class="card card-planta h-100">
-                <div style="overflow: hidden; height: 220px; position: relative;">
-                    <img src="<%= plantImage(planta.nombre) %>" class="card-img-top w-100 h-100" alt="<%= planta.nombre %>" style="object-fit: cover;">
-                    <% if (planta.destacada) { %>
-                        <span class="badge bg-warning position-absolute top-0 end-0 m-2"><i class="bi bi-star-fill"></i> Destacada</span>
-                    <% } %>
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <span class="badge-categoria mb-2 align-self-start"><%= planta.categoria %></span>
-                    <h5 class="card-title fw-bold"><%= planta.nombre %></h5>
-                    <p class="text-muted small mb-1"><em><%= planta.nombre_cientifico %></em></p>
-                    <p class="card-text text-muted small flex-grow-1"><%= excerpt(planta.descripcion, 80) %>...</p>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span class="precio-planta">$<%= formatPrice(planta.precio) %></span>
-                        <a href="/planta/<%= planta.id_planta %>" class="btn btn-outline-ecoflora btn-sm">Ver más</a>
-                    </div>
-                </div>
-            </div>
+        <% plantas.forEach(function(planta, i) { %>
+        <div class="col-sm-6 col-lg-4 col-xl-3">
+            <%- include(partial('tarjeta'), { planta: planta, i: i % 4 }) %>
         </div>
         <% }) %>
     </div>
+    <% } else { %>
+    <div class="vacio vidrio reveal">
+        <i class="bi bi-flower1"></i>
+        <h3 class="mt-3">No encontramos plantas</h3>
+        <p class="text-muted mb-3">Prueba con otro nombre o quita los filtros.</p>
+        <a href="/catalogo" class="btn btn-ecoflora"><i class="bi bi-arrow-counterclockwise me-2"></i>Ver todo el catálogo</a>
+    </div>
+    <% } %>
 </div>
 
 <%- include(partial('footer')) %>

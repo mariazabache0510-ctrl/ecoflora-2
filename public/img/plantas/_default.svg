@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Planta">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e9f7ec"/>
+      <stop offset="1" stop-color="#b7e4c7"/>
+    </linearGradient>
+    <linearGradient id="hoja" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#52b788"/>
+      <stop offset="1" stop-color="#1b4332"/>
+    </linearGradient>
+    <linearGradient id="maceta" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9884a"/>
+      <stop offset="1" stop-color="#a4561a"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#fondo)"/>
+  <circle cx="470" cy="130" r="70" fill="#fff" opacity=".45"/>
+  <circle cx="110" cy="480" r="110" fill="#fff" opacity=".25"/>
+  <path d="M300 400 C300 300 292 230 300 150" stroke="#2d6a4f" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M300 340 C230 340 170 300 160 230 C240 230 295 270 300 340Z" fill="url(#hoja)"/>
+  <path d="M300 300 C370 300 430 262 440 190 C360 190 305 230 300 300Z" fill="url(#hoja)" opacity=".92"/>
+  <path d="M300 230 C255 215 225 170 232 118 C285 130 308 175 300 230Z" fill="url(#hoja)" opacity=".85"/>
+  <path d="M300 205 C340 190 372 150 366 104 C318 114 294 156 300 205Z" fill="#52b788"/>
+  <path d="M215 395 H385 L365 505 Q362 520 346 520 H254 Q238 520 235 505Z" fill="url(#maceta)"/>
+  <rect x="205" y="380" width="190" height="30" rx="12" fill="#c9733a"/>
+  <ellipse cx="300" cy="384" rx="86" ry="9" fill="#5b3a1e" opacity=".55"/>
+</svg>

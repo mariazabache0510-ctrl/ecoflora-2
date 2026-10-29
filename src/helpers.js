@@ -42,15 +42,30 @@ function formatDate(value, withSeconds) {
   return withSeconds ? `${base}:${pad(date.getSeconds())}` : base;
 }
 
-function plantImage(nombre, size) {
-  const text = encodeURIComponent(nombre || 'Planta');
-  if (size === 'detail') {
-    return `https://placehold.co/800x600/1b4332/ffffff?text=${text}`;
-  }
-  if (size === 'thumb') {
-    return `https://placehold.co/100x100/2d6a4f/ffffff?text=${text}`;
-  }
-  return `https://placehold.co/600x400/2d6a4f/ffffff?text=${text}`;
+const DEFAULT_IMAGE = '/img/plantas/_default.svg';
+
+// Ruta pública de la foto de una planta (columna `imagen`). Si no hay archivo asignado, usa la ilustración de respaldo.
+function plantImage(planta) {
+  const file = String((planta && planta.imagen) || '').trim();
+  if (!file || file === 'default.jpg') return DEFAULT_IMAGE;
+  return `/img/plantas/${encodeURIComponent(file)}`;
+}
+
+// Etiqueta <img> completa: carga diferida y respaldo automático si el archivo no carga.
+function plantImg(planta, attrs = {}) {
+  const alt = attrs.alt !== undefined ? attrs.alt : (planta && planta.nombre) || 'Planta';
+  const parts = [
+    `src="${escapeHtml(plantImage(planta))}"`,
+    `alt="${escapeHtml(alt)}"`,
+    `loading="${attrs.eager ? 'eager' : 'lazy'}"`,
+    'decoding="async"'
+  ];
+  if (attrs.class) parts.push(`class="${escapeHtml(attrs.class)}"`);
+  if (attrs.width) parts.push(`width="${escapeHtml(attrs.width)}"`);
+  if (attrs.height) parts.push(`height="${escapeHtml(attrs.height)}"`);
+  if (attrs.style) parts.push(`style="${escapeHtml(attrs.style)}"`);
+  parts.push(`onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}'"`);
+  return `<img ${parts.join(' ')}>`;
 }
 
 function escapeRegex(value) {
@@ -82,6 +97,7 @@ module.exports = {
   ucfirst,
   formatDate,
   plantImage,
+  plantImg,
   escapeRegex,
   pageName
 };
