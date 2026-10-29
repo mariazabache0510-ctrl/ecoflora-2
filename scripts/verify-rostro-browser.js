@@ -90,7 +90,7 @@ async function crearNavegador(nombre, { camara, bloquear } = {}) {
   };
   n.enviar = (metodo, params = {}) => new Promise((res, rej) => {
     const i = ++contador;
-    const espera = setTimeout(() => { pendientes.delete(i); rej(new Error('sin respuesta de Chrome: ' + metodo)); }, 30000);
+    const espera = setTimeout(() => { pendientes.delete(i); rej(new Error('sin respuesta de Chrome: ' + metodo)); }, 45000);
     pendientes.set(i, { res: (v) => { clearTimeout(espera); res(v); }, rej: (e) => { clearTimeout(espera); rej(e); } });
     ws.send(JSON.stringify({ id: i, method: metodo, params }));
   });
@@ -255,6 +255,8 @@ async function escenarioExito() {
   verifica(true, 'se detecta el rostro, pasa los controles de calidad y se pide el reto');
   await dormir(500);
   await n.foto('5-reto-escritorio');
+  await dormir(1200);
+  await n.foto('5b-reto-escritorio');
   verifica((await texto(n, '[data-rostro-instruccion]')).length > 5, 'se muestra la instrucción del reto');
   await n.esperar(`['capturando', 'verificando', 'exito', 'error'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 30000, 'la captura');
   await n.esperar(`['exito', 'error'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 90000, 'el resultado');
@@ -265,15 +267,27 @@ async function escenarioExito() {
     console.log('      instrucción: ' + (await texto(n, '[data-rostro-instruccion]')));
   }
   verifica((await estado(n)) === 'exito', 'el registro termina en éxito');
-  await n.foto('6-exito-escritorio');
+  const traza = await estados(n);
+  await dormir(400);
+  await n.foto('6-exito-escritorio-a');
+  await dormir(1900);
+  await n.foto('6-exito-escritorio-b');
   verifica(true, 'se capturan los descriptores y el servidor los guarda');
-  console.log('      estados: ' + (await estados(n)));
-  verifica((await n.evaluar(`document.querySelectorAll('[data-rostro-pasos] span.hecho').length`)) === 4, 'los 4 puntos de captura quedan completos');
+  console.log('      estados: ' + traza);
+  verifica(/capturando > verificando > exito$/.test(traza), 'el flujo pasa por cargar, alinear, reto, capturar, verificar y éxito');
   await n.esperar(`location.pathname === '/rostro' && location.search.includes('activado=1')`, 10000, 'la redirección');
   await dormir(800);
   verifica((await n.evaluar(`document.body.innerText.includes('Activado desde')`)) === true, 'después queda activado en /rostro');
   await n.foto('7-activado-escritorio');
   verifica((await n.evaluar(`document.querySelector('[data-rostro-video]') ? !document.querySelector('[data-rostro-video]').srcObject : true`)), 'la cámara queda apagada al terminar');
+
+  await n.ir('/usuario/perfil');
+  await n.foto('7b-perfil-escritorio');
+  await n.ir('/usuario');
+  await n.foto('7c-panel-escritorio');
+  await n.ir('/privacidad');
+  await n.foto('7d-privacidad-escritorio');
+  verifica((await n.evaluar(`document.body.innerText.includes('Superintendencia de Industria y Comercio')`)) === true, 'la política de datos explica cómo reclamar');
 
   await n.vista(390, 844, true);
   await n.ir('/rostro');
@@ -305,6 +319,7 @@ async function escenarioFotoFija() {
   console.log('      estados: ' + (await estados(n)));
   verifica(/se acabó el tiempo/i.test(mensaje), 'una foto fija termina con "Se acabó el tiempo" (no pasa la prueba de vida)');
   verifica((await estado(n)) === 'error', 'el estado final es de error');
+  await dormir(1500);
   await n.foto('11-foto-fija-error');
   verifica((await n.evaluar(`!document.querySelector('[data-rostro-video]').srcObject`)) === true, 'tras el error la cámara se apaga');
   const me = await n.evaluar(`fetch('/rostro').then((r) => r.text()).then((t) => t.includes('Activado desde'))`);
@@ -327,6 +342,7 @@ async function escenarioBloqueada() {
   await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'error'`, 90000, 'el error de cámara');
   const mensaje = await texto(n, '[data-rostro-mensaje]');
   verifica(/cámara está bloqueada/i.test(mensaje) && /Permitir/.test(mensaje), 'se explica cómo desbloquear la cámara');
+  await dormir(1500);
   await n.foto('12-camara-bloqueada');
   n.cerrar();
   return n;

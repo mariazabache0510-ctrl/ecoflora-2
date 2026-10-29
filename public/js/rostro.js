@@ -203,6 +203,12 @@
 
     /* ---------- Captura: cámara + prueba de vida + descriptores ---------- */
 
+    // Líneas de la malla sobre el rostro: [desde, hasta, cerrado] y enlaces sueltos entre puntos de los 68.
+    var CONTORNOS = [[0, 16, false], [17, 21, false], [22, 26, false], [27, 30, false], [31, 35, false],
+        [36, 41, true], [42, 47, true], [48, 59, true], [60, 67, true]];
+    var ENLACES = [[30, 36], [30, 45], [27, 39], [27, 42], [30, 48], [30, 54], [8, 48], [8, 54], [36, 48], [45, 54],
+        [31, 48], [35, 54], [17, 36], [26, 45], [0, 36], [16, 45], [0, 48], [16, 54], [21, 27], [22, 27]];
+
     // config.cantidad: cuántos descriptores tomar.
     // config.pedirDesafio(): promesa con { nonce, accion } del servidor.
     // config.enviar(descriptores, nonce): promesa; si el servidor rechaza, lanza el error.
@@ -250,16 +256,42 @@
             lienzo.height = video.videoHeight || 480;
         }
 
-        function pintar(puntos, tono) {
+        // Dibuja sobre el rostro una malla ligera (líneas finas y puntos que brillan) con los 68 puntos.
+        function pintar(puntos, advertencia) {
             if (!contexto) return;
             contexto.clearRect(0, 0, lienzo.width, lienzo.height);
             if (!puntos) return;
-            contexto.fillStyle = tono || 'rgba(183, 255, 214, 0.9)';
+            var color = advertencia ? '255, 214, 120' : '183, 255, 214';
+            var escala = lienzo.width / 400;
+            contexto.lineJoin = 'round';
+            contexto.lineCap = 'round';
+            contexto.lineWidth = Math.max(1, escala * 1.1);
+            contexto.strokeStyle = 'rgba(' + color + ', 0.5)';
+            CONTORNOS.forEach(function (c) {
+                contexto.beginPath();
+                for (var i = c[0]; i <= c[1]; i += 1) {
+                    if (i === c[0]) contexto.moveTo(puntos[i].x, puntos[i].y);
+                    else contexto.lineTo(puntos[i].x, puntos[i].y);
+                }
+                if (c[2]) contexto.closePath();
+                contexto.stroke();
+            });
+            contexto.strokeStyle = 'rgba(' + color + ', 0.22)';
+            contexto.beginPath();
+            ENLACES.forEach(function (e) {
+                contexto.moveTo(puntos[e[0]].x, puntos[e[0]].y);
+                contexto.lineTo(puntos[e[1]].x, puntos[e[1]].y);
+            });
+            contexto.stroke();
+            contexto.fillStyle = 'rgba(' + color + ', 0.95)';
+            contexto.shadowColor = 'rgba(' + color + ', 0.9)';
+            contexto.shadowBlur = 7 * escala;
             puntos.forEach(function (punto) {
                 contexto.beginPath();
-                contexto.arc(punto.x, punto.y, 2.4, 0, Math.PI * 2);
+                contexto.arc(punto.x, punto.y, 1.9 * escala, 0, Math.PI * 2);
                 contexto.fill();
             });
+            contexto.shadowBlur = 0;
         }
 
         function analizar() {
@@ -269,7 +301,7 @@
                 var caras = resultados.map(function (r) { return { caja: r.detection.box, puntaje: r.detection.score }; });
                 var calidad = Vida.evaluarCalidad({ caras: caras, ancho: video.videoWidth, alto: video.videoHeight, luz: luz });
                 var puntos = resultados.length === 1 ? resultados[0].landmarks.positions : null;
-                pintar(puntos, calidad.ok ? null : 'rgba(255, 214, 120, 0.9)');
+                pintar(puntos, !calidad.ok);
                 return { calidad: calidad, puntos: puntos, cantidad: resultados.length };
             });
         }
@@ -306,6 +338,7 @@
                     buenos = 0;
                     ui.instruccion(PISTAS[a.calidad.codigo] || PISTAS.sin_rostro, 'pista');
                 }
+                ui.progreso(Math.min(1, buenos / 8));
                 if (buenos >= 8) return;
                 if (Date.now() > limite) throw fallo('tiempo_alinear');
                 await siguienteCuadro();
@@ -316,6 +349,7 @@
             var reto = Vida.crearReto(desafio.accion);
             var limite = Date.now() + 30000;
             ui.estado('reto');
+            ui.progreso(0);
             ui.instruccion(INSTRUCCION_RETO[desafio.accion] || INSTRUCCION_RETO.parpadear, 'reto');
             while (yo === turno) {
                 var a = await analizar();
@@ -339,6 +373,7 @@
             // En celulares lentos cada captura puede tardar un par de segundos.
             var limite = Date.now() + 25000;
             ui.estado('capturando');
+            ui.progreso(0);
             ui.instruccion('¡Bien! Ahora mira al frente y no te muevas…', 'ok');
             ui.pasos(0);
             while (tomados.length < config.cantidad && yo === turno) {
@@ -348,6 +383,7 @@
                     if (d) {
                         tomados.push(d);
                         ui.pasos(tomados.length);
+                        ui.progreso(tomados.length / config.cantidad);
                         await dormir(320);
                     }
                 } else {
@@ -407,6 +443,7 @@
                 var resultado = await config.enviar(descriptores, desafio.nonce);
                 detener();
                 ui.pasos(config.cantidad);
+                ui.progreso(1);
                 ui.instruccion(typeof config.textoExito === 'function' ? config.textoExito(resultado) : (config.textoExito || '¡Listo!'), 'ok');
                 ui.estado('exito');
                 corriendo = false;
@@ -498,7 +535,7 @@
             captura.ejecutar().then(function (resultado) {
                 if (!resultado) return; // se canceló
                 // Un momento para ver la animación de éxito y se entra a la página de destino.
-                setTimeout(function () { window.location.href = destino; }, reducir ? 600 : 2400);
+                setTimeout(function () { window.location.href = destino; }, reducir ? 600 : 3000);
             }).catch(function (error) {
                 iniciar.disabled = false;
                 iniciar.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Intentar de nuevo';
@@ -621,7 +658,7 @@
                 if (!resultado) return;
                 guardarRecordado(usuarioActual());
                 cancelar.hidden = true;
-                setTimeout(function () { window.location.href = resultado.destino || '/'; }, reducir ? 600 : 2200);
+                setTimeout(function () { window.location.href = resultado.destino || '/'; }, reducir ? 600 : 2800);
             }).catch(function () {
                 iniciar.disabled = false;
                 iniciar.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Intentar de nuevo';

@@ -881,26 +881,87 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .politica ul { padding-left: 1.2rem; }
 .politica li { margin-bottom: 0.4rem; }
 
-.rostro-camara { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-.rostro-marco { position: relative; width: min(100%, 300px); aspect-ratio: 1; }
-.rostro-circulo { position: absolute; inset: 14px; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #d8f3dc, #95d5b2); }
+/* Cámara circular: anillo de progreso, línea de escaneo, malla sobre el rostro y animaciones de resultado */
+@property --progreso { syntax: '<number>'; inherits: true; initial-value: 0; }
+.rostro-camara { --progreso: 0; --rostro-color: #52b788; display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; transition: --progreso 0.45s var(--curva); }
+.rostro-marco { position: relative; isolation: isolate; width: min(100%, 300px); aspect-ratio: 1; }
+/* Resplandor que respira detrás del círculo */
+.rostro-marco::after { content: ''; position: absolute; inset: -22px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(82, 183, 136, 0.34), rgba(82, 183, 136, 0) 68%); animation: rostro-respira 4.2s ease-in-out infinite; }
+/* Anillo giratorio de colores naturales */
+.rostro-anillo { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, #2d6a4f, #74c69d, #d8f3dc, #95d5b2, #52b788, #2d6a4f); opacity: 0.55; transition: opacity 0.5s, filter 0.5s;
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); }
+/* Anillo de progreso (se llena al alinear el rostro, al hacer el reto y al capturar) */
+.rostro-marco::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 50%; opacity: 0; transition: opacity 0.4s; pointer-events: none;
+    background: conic-gradient(from -90deg, #ffffff calc(var(--progreso) * 360deg), transparent 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9)); }
+.rostro-circulo { position: absolute; inset: 14px; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #eaf8ee, #95d5b2 78%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75), 0 10px 30px rgba(27, 67, 50, 0.22); }
 .rostro-video, .rostro-malla { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-.rostro-video { opacity: 0; transition: opacity 0.5s; }
-.rostro-camara:not([data-estado="inactivo"]):not([data-estado="cargando"]):not([data-estado="camara"]) .rostro-video { opacity: 1; }
+.rostro-video { opacity: 0; transition: opacity 0.6s; }
+.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"], [data-estado="exito"], [data-estado="error"]) .rostro-video { opacity: 1; }
+/* Línea de luz que recorre el rostro mientras se analiza */
+.rostro-escaneo { position: absolute; left: 0; right: 0; top: 0; height: 34%; opacity: 0; pointer-events: none; mix-blend-mode: screen;
+    background: linear-gradient(to bottom, rgba(183, 255, 214, 0) 0%, rgba(183, 255, 214, 0.5) 88%, rgba(236, 255, 244, 0.95) 98%, rgba(236, 255, 244, 0) 100%); }
+.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 1; animation: rostro-barrido 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+/* Estado de reposo: ícono flotando */
 .rostro-reposo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1.2rem; text-align: center; color: var(--verde-medio); font-weight: 600; font-size: 0.9rem; transition: opacity 0.4s; }
-.rostro-reposo i { font-size: 3.4rem; opacity: 0.8; }
+.rostro-reposo i { font-size: 3.4rem; opacity: 0.85; animation: rostro-flota 3.4s ease-in-out infinite; }
 .rostro-camara:not([data-estado="inactivo"]) .rostro-reposo { opacity: 0; pointer-events: none; }
-.rostro-resultado { position: absolute; inset: 0; display: none; place-items: center; background: rgba(255, 255, 255, 0.82); }
-.rostro-resultado svg { width: 70%; height: 70%; }
-.rostro-camara[data-estado="exito"] .rostro-ok, .rostro-camara[data-estado="error"] .rostro-fallo { display: grid; }
-.rostro-instruccion { margin: 0; min-height: 2.8em; max-width: 340px; text-align: center; font-weight: 600; color: var(--verde-oscuro); }
-.rostro-instruccion[data-tono="pista"] { color: #a16207; }
-.rostro-instruccion[data-tono="error"] { color: #b3173f; }
-.rostro-instruccion[data-tono="ok"] { color: #157347; }
+/* Rueda de carga mientras se preparan los modelos, se pide la cámara o el servidor verifica */
+.rostro-circulo::after { content: ''; position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; border: 4px solid rgba(45, 106, 79, 0.18); border-top-color: var(--verde-medio); opacity: 0; transition: opacity 0.3s; animation: girar-lento 0.9s linear infinite; pointer-events: none; }
+.rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="verificando"]) .rostro-circulo::after { opacity: 1; }
+.rostro-camara[data-estado="verificando"] .rostro-circulo::after { border-color: rgba(255, 255, 255, 0.4); border-top-color: #fff; }
+/* Anillo según el estado */
+.rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"]) .rostro-anillo { opacity: 1; animation: girar-lento 7s linear infinite; }
+.rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="verificando"]) .rostro-anillo { animation-duration: 2.4s; }
+.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-marco::before { opacity: 1; }
+.rostro-camara[data-estado="exito"] .rostro-anillo { opacity: 1; background: conic-gradient(#2fbf71, #95d5b2, #2fbf71); filter: drop-shadow(0 0 10px rgba(47, 191, 113, 0.8)); animation: rostro-destello 1.6s ease-out 1; }
+.rostro-camara[data-estado="error"] .rostro-anillo { opacity: 1; background: conic-gradient(#e5738f, #f4b6c4, #e5738f); filter: drop-shadow(0 0 8px rgba(229, 115, 143, 0.6)); }
+.rostro-camara[data-estado="error"] .rostro-marco { animation: rostro-sacude 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1; }
+/* Resultado: hoja que florece (éxito) u hoja marchita (error) */
+.rostro-resultado { position: absolute; inset: 0; z-index: 2; display: none; place-items: center; background: rgba(255, 255, 255, 0.8); -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%); }
+.rostro-resultado svg { width: 72%; height: 72%; overflow: visible; }
+.rostro-camara[data-estado="exito"] .rostro-ok, .rostro-camara[data-estado="error"] .rostro-fallo { display: grid; animation: rostro-aparece 0.5s ease-out both; }
+.rostro-ok::before { content: ''; position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; margin: -15% 0 0 -15%; border-radius: 50%; border: 3px solid rgba(47, 191, 113, 0.5); opacity: 0; }
+.rostro-camara[data-estado="exito"] .rostro-ok::before { animation: rostro-onda 1.5s 0.5s ease-out 1 both; }
+.rf-tallo { fill: none; stroke: #2d6a4f; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 70; stroke-dashoffset: 70; }
+.rf-hoja { fill: #52b788; stroke: #2d6a4f; stroke-width: 1.2; stroke-linejoin: round; transform: scale(0); }
+.rf-hoja-i { transform-origin: 60px 101px; }
+.rf-hoja-d { transform-origin: 60px 92px; fill: #74c69d; }
+.rf-petalos { transform-origin: 60px 53px; transform: scale(0) rotate(-50deg); }
+.rf-petalo { fill: #ffb3c7; stroke: #ff7aa2; stroke-width: 1.2; opacity: 0; }
+.rf-centro { fill: #ffd166; stroke: #e9a23b; stroke-width: 1.5; transform-origin: 60px 53px; transform: scale(0); }
+.rostro-camara[data-estado="exito"] .rf-tallo { animation: rostro-dibuja 0.6s 0.15s ease-out forwards; }
+.rostro-camara[data-estado="exito"] .rf-hoja-i { animation: rostro-brota 0.55s 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.rostro-camara[data-estado="exito"] .rf-hoja-d { animation: rostro-brota 0.55s 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.rostro-camara[data-estado="exito"] .rf-petalos { animation: rostro-florece 0.9s 0.85s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+.rostro-camara[data-estado="exito"] .rf-petalo { animation: rostro-petalo 0.4s ease-out forwards; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(1) { animation-delay: 0.85s; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(2) { animation-delay: 0.93s; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(3) { animation-delay: 1.01s; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(4) { animation-delay: 1.09s; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(5) { animation-delay: 1.17s; }
+.rostro-camara[data-estado="exito"] .rf-petalo:nth-child(6) { animation-delay: 1.25s; }
+.rostro-camara[data-estado="exito"] .rf-centro { animation: rostro-brota 0.45s 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.rm-tallo { fill: none; stroke: #8a6d4b; stroke-width: 4; stroke-linecap: round; }
+.rm-hoja { fill: #74c69d; stroke: #8a6d4b; stroke-width: 1.2; stroke-linejoin: round; transform-origin: 74px 56px; }
+.rm-hoja-2 { transform-origin: 63px 80px; }
+.rostro-marchita { transform-origin: 50% 90%; }
+.rostro-camara[data-estado="error"] .rm-hoja { animation: rostro-marchita 1s 0.15s ease-in forwards; }
+.rostro-camara[data-estado="error"] .rm-hoja-2 { animation-delay: 0.3s; }
+.rostro-camara[data-estado="error"] .rostro-marchita { animation: rostro-inclina 1.1s 0.2s ease-in forwards; }
+/* Chip con la instrucción actual */
+.rostro-instruccion { display: inline-flex; align-items: center; justify-content: center; margin: 0; min-height: 2.6em; max-width: 100%; padding: 0.55rem 1.1rem; border-radius: 999px; text-align: center; font-weight: 600; line-height: 1.3; color: var(--verde-oscuro);
+    background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(45, 106, 79, 0.16); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 6px 18px rgba(27, 67, 50, 0.08); transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+.rostro-instruccion[data-tono="reto"] { background: #d9f6e3; border-color: rgba(47, 191, 113, 0.5); color: #14573a; }
+.rostro-instruccion[data-tono="ok"] { background: #d9f6e3; border-color: rgba(47, 191, 113, 0.4); color: #157347; }
+.rostro-instruccion[data-tono="pista"] { background: #fff4d6; border-color: rgba(233, 162, 59, 0.5); color: #7a4a05; }
+.rostro-instruccion[data-tono="error"] { background: #fde6ec; border-color: rgba(229, 115, 143, 0.5); color: #a4163a; }
 .rostro-pasos { display: flex; gap: 0.5rem; }
+.rostro-pasos[hidden] { display: none; }
 .rostro-pasos span { width: 12px; height: 12px; border-radius: 50%; background: rgba(45, 106, 79, 0.2); transition: background 0.3s, transform 0.4s var(--curva); }
-.rostro-pasos span.hecho { background: var(--verde-claro); transform: scale(1.2); }
-.rostro-mensaje { display: flex; align-items: flex-start; gap: 0.75rem; width: 100%; padding: 0.9rem 1.1rem; border-radius: var(--radio-sm); border-left: 5px solid #5fa8d3; background: #e4f2fb; color: #0c5a82; text-align: left; }
+.rostro-pasos span.hecho { background: var(--verde-claro); transform: scale(1.25); box-shadow: 0 0 10px rgba(82, 183, 136, 0.7); }
+.rostro-mensaje { display: flex; align-items: flex-start; gap: 0.75rem; width: 100%; padding: 0.9rem 1.1rem; border-radius: var(--radio-sm); border-left: 5px solid #5fa8d3; background: #e4f2fb; color: #0c5a82; text-align: left; animation: rostro-aparece 0.4s ease-out both; }
 .rostro-mensaje[hidden] { display: none; }
 .rostro-mensaje > i { flex: none; font-size: 1.3rem; margin-top: 0.1rem; }
 .rostro-mensaje strong { display: block; }
@@ -926,6 +987,29 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .rostro-botones-login { flex-direction: column; align-items: stretch; }
 .rostro-nota { margin: 0.9rem 0 0; text-align: center; font-size: 0.85rem; color: var(--texto-suave); }
 
+@keyframes rostro-respira { 0%, 100% { transform: scale(0.96); opacity: 0.7; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes rostro-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes rostro-barrido { 0% { transform: translateY(-105%); } 100% { transform: translateY(300%); } }
+@keyframes rostro-aparece { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes rostro-destello { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes rostro-onda { 0% { opacity: 0.9; transform: scale(0.6); } 100% { opacity: 0; transform: scale(4.2); } }
+@keyframes rostro-dibuja { to { stroke-dashoffset: 0; } }
+@keyframes rostro-brota { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes rostro-florece { 0% { transform: scale(0) rotate(-50deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes rostro-petalo { to { opacity: 1; } }
+@keyframes rostro-marchita { 0% { transform: rotate(0); fill: #74c69d; } 100% { transform: rotate(32deg) scale(0.95); fill: #cdb89a; } }
+@keyframes rostro-inclina { 0% { transform: rotate(0); } 100% { transform: rotate(-9deg); } }
+@keyframes rostro-sacude { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+@media (prefers-reduced-motion: reduce) {
+    /* Sin movimiento: la rueda de carga queda como un arco quieto y el resultado aparece ya terminado. */
+    .rostro-camara { transition: none; }
+    .rostro-escaneo, .rostro-marco::after { animation: none !important; }
+    .rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 0.35; transform: translateY(80%); }
+    .rf-tallo { stroke-dashoffset: 0; }
+    .rf-hoja, .rf-petalos, .rf-centro { transform: none; }
+    .rf-petalo { opacity: 1; }
+}
+
 /* ---------- Adaptación a pantallas ---------- */
 @media (max-width: 991.98px) {
     .nav-eco .navbar-collapse { margin-top: 0.8rem; padding: 0.8rem; border-radius: 20px; background: rgba(10, 40, 28, 0.55); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -941,6 +1025,10 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
     .jardin-esquina { opacity: 0.4; }
 }
 @media (max-width: 575.98px) {
+    .rostro-marco { width: min(100%, 270px); }
+    .rostro-instruccion { font-size: 0.93rem; padding: 0.5rem 0.95rem; }
+    .rostro-botones { width: 100%; }
+    .rostro-botones .btn { flex: 1 1 100%; }
     .marca-nombre { font-size: 1.4rem; }
     .hero-collage { min-height: 300px; }
     .panel-cabecera { flex-direction: column; text-align: center; }
