@@ -12,29 +12,73 @@
 
                 <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
 
-                <form method="POST" action="/login">
-                    <div class="mb-3">
-                        <label class="form-label" for="usuario">Usuario o Email</label>
-                        <div class="campo">
-                            <i class="bi bi-person"></i>
-                            <input type="text" id="usuario" name="usuario" class="form-control" autocomplete="username" required>
+                <% if (rostroDisponible) { %>
+                <%# Dos formas de entrar: contraseña (siempre disponible) o rostro. Sin JavaScript solo se ve la contraseña. %>
+                <div class="login-modos" role="tablist" aria-label="Forma de ingresar" data-login-modos hidden>
+                    <span class="login-modos-marca" aria-hidden="true"></span>
+                    <button type="button" role="tab" id="login-tab-clave" class="login-modo activo" aria-selected="true" aria-controls="login-panel-clave" data-login-tab="clave"><i class="bi bi-key"></i> Contraseña</button>
+                    <button type="button" role="tab" id="login-tab-rostro" class="login-modo" aria-selected="false" aria-controls="login-panel-rostro" tabindex="-1" data-login-tab="rostro"><i class="bi bi-person-bounding-box"></i> Rostro</button>
+                </div>
+                <% } %>
+
+                <div id="login-panel-clave" role="tabpanel" aria-labelledby="login-tab-clave" data-login-panel="clave">
+                    <form method="POST" action="/login">
+                        <div class="mb-3">
+                            <label class="form-label" for="usuario">Usuario o Email</label>
+                            <div class="campo">
+                                <i class="bi bi-person"></i>
+                                <input type="text" id="usuario" name="usuario" class="form-control" autocomplete="username" required>
+                            </div>
                         </div>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label" for="password">Contraseña</label>
-                        <div class="campo con-ojo">
-                            <i class="bi bi-lock"></i>
-                            <input type="password" id="password" name="password" class="form-control" autocomplete="current-password" required>
-                            <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                        <div class="mb-4">
+                            <label class="form-label" for="password">Contraseña</label>
+                            <div class="campo con-ojo">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="password" name="password" class="form-control" autocomplete="current-password" required>
+                                <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                            </div>
                         </div>
+                        <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-box-arrow-in-right me-2"></i>Ingresar</button>
+                    </form>
+                </div>
+
+                <% if (rostroDisponible) { %>
+                <div id="login-panel-rostro" role="tabpanel" aria-labelledby="login-tab-rostro" data-login-panel="rostro" hidden>
+                    <div data-login-rostro>
+                        <%# Se pide el usuario la primera vez; después este navegador lo recuerda (con "No soy yo" para cambiarlo). %>
+                        <div class="mb-3" data-rostro-bloque-usuario>
+                            <label class="form-label" for="rostro-usuario">Usuario o Email</label>
+                            <div class="campo">
+                                <i class="bi bi-person"></i>
+                                <input type="text" id="rostro-usuario" class="form-control" autocomplete="username" data-rostro-usuario>
+                            </div>
+                        </div>
+                        <div class="rostro-recordado" data-rostro-recordado hidden>
+                            <span class="rostro-recordado-icono"><i class="bi bi-person-check"></i></span>
+                            <span class="rostro-recordado-texto"><small>Entrar como</small><strong data-rostro-recordado-nombre></strong></span>
+                            <button type="button" class="rostro-enlace" data-rostro-no-soy>No soy yo</button>
+                        </div>
+
+                        <%- include(partial('camara-rostro')) %>
+
+                        <div class="rostro-botones rostro-botones-login">
+                            <button type="button" class="btn btn-ecoflora btn-lg w-100" data-login-rostro-iniciar><i class="bi bi-camera-video me-2"></i>Entrar con mi rostro</button>
+                            <button type="button" class="btn btn-suave" data-login-rostro-cancelar hidden>Cancelar</button>
+                        </div>
+                        <p class="rostro-nota">Solo funciona si ya activaste el rostro en tu perfil. Si no, entra con tu contraseña.</p>
                     </div>
-                    <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-box-arrow-in-right me-2"></i>Ingresar</button>
-                </form>
+                </div>
+                <% } %>
 
                 <p class="auth-pie">¿No tienes cuenta? <a href="/registro">Regístrate</a></p>
             </div>
         </div>
     </div>
 </div>
+
+<% if (rostroDisponible) { %>
+<script src="/js/rostro-vida.js"></script>
+<script src="/js/rostro.js"></script>
+<% } %>
 
 <%- include(partial('footer')) %>

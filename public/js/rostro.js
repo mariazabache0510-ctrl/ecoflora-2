@@ -33,6 +33,10 @@
         tiempo_alinear: { titulo: 'No logramos ver tu rostro', texto: 'Busca una luz de frente, quítate gorra o lentes oscuros y colócate dentro del círculo. Luego inténtalo otra vez.' },
         tiempo_reto: { titulo: 'Se acabó el tiempo', texto: 'No detectamos el movimiento a tiempo. Inténtalo de nuevo con calma y buena luz.' },
         captura: { titulo: 'No pudimos tomar una buena captura', texto: 'Mantén la cabeza quieta, de frente y con buena luz, e inténtalo otra vez.' },
+        no_coincide: { titulo: 'No te reconocimos', texto: 'Inténtalo de nuevo con buena luz y de frente. Si sigue fallando, entra con tu contraseña.' },
+        sin_rostro_activo: { titulo: 'Esta cuenta no tiene el rostro activado', texto: 'Revisa que el usuario esté bien escrito. Si aún no lo activaste, entra con tu contraseña y actívalo desde tu perfil.' },
+        demasiados_intentos: { titulo: 'Demasiados intentos', texto: 'Espera unos minutos o entra con tu contraseña, que sigue funcionando.' },
+        rostro_ilegible: { titulo: 'Hay que registrar tu rostro de nuevo', texto: 'Entra con tu contraseña y vuelve a registrarlo desde tu perfil.' },
         generico: { titulo: 'Algo salió mal', texto: 'No pudimos completar el proceso. Inténtalo de nuevo en un momento.' }
     };
 
@@ -183,6 +187,7 @@
                 pasos.forEach(function (punto, i) { punto.classList.toggle('hecho', i < hechos); });
             },
             progreso: function (valor) { caja.style.setProperty('--progreso', String(valor)); },
+            ocultarPasos: function (ocultar) { var cont = $('[data-rostro-pasos]', caja); if (cont) cont.hidden = ocultar; },
             mensaje: function (tipo, titulo, texto) {
                 $('[data-rostro-mensaje-titulo]', mensaje).textContent = titulo;
                 $('[data-rostro-mensaje-texto]', mensaje).textContent = texto;
@@ -211,20 +216,28 @@
         muestra.height = 24;
         var contextoMuestra = muestra.getContext('2d', { willReadFrequently: true });
         var flujo = null;
-        var cancelado = false;
+        var turno = 0; // cada intento tiene su número; cancelar lo invalida
         var corriendo = false;
         var luz = null;
         var cuadros = 0;
+        ui.ocultarPasos(Boolean(config.sinPasos));
 
         function opciones() {
             return new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
         }
 
-        // Brillo medio (0 a 255) de la zona central del video.
-        function medirLuz() {
-            var lado = Math.min(video.videoWidth, video.videoHeight);
-            if (!lado) return null;
-            contextoMuestra.drawImage(video, (video.videoWidth - lado) / 2, (video.videoHeight - lado) / 2, lado, lado, 0, 0, 24, 24);
+        // Brillo medio (0 a 255) de la CARA (su zona central), no de todo el cuadro: un fondo oscuro
+        // no es "poca luz", pero una cara a contraluz sí.
+        function medirLuz(caja) {
+            var ancho = video.videoWidth;
+            var alto = video.videoHeight;
+            if (!ancho || !alto || !caja) return null;
+            var sx = Math.max(0, caja.x + caja.width * 0.2);
+            var sy = Math.max(0, caja.y + caja.height * 0.2);
+            var sw = Math.min(ancho - sx, caja.width * 0.6);
+            var sh = Math.min(alto - sy, caja.height * 0.6);
+            if (sw < 4 || sh < 4) return null;
+            contextoMuestra.drawImage(video, sx, sy, sw, sh, 0, 0, 24, 24);
             var datos = contextoMuestra.getImageData(0, 0, 24, 24).data;
             var suma = 0;
             for (var i = 0; i < datos.length; i += 4) suma += 0.299 * datos[i] + 0.587 * datos[i + 1] + 0.114 * datos[i + 2];
@@ -252,7 +265,7 @@
         function analizar() {
             return window.faceapi.detectAllFaces(video, opciones()).withFaceLandmarks().then(function (resultados) {
                 cuadros += 1;
-                if (luz === null || cuadros % 5 === 0) luz = medirLuz();
+                luz = resultados.length === 1 ? medirLuz(resultados[0].detection.box) : null;
                 var caras = resultados.map(function (r) { return { caja: r.detection.box, puntaje: r.detection.score }; });
                 var calidad = Vida.evaluarCalidad({ caras: caras, ancho: video.videoWidth, alto: video.videoHeight, luz: luz });
                 var puntos = resultados.length === 1 ? resultados[0].landmarks.positions : null;
@@ -281,10 +294,10 @@
         }
 
         // Espera a que el rostro esté bien puesto durante unos cuadros seguidos.
-        async function alinear() {
+        async function alinear(yo) {
             var buenos = 0;
             var limite = Date.now() + 40000;
-            while (!cancelado) {
+            while (yo === turno) {
                 var a = await analizar();
                 if (a.calidad.ok) {
                     buenos += 1;
@@ -299,12 +312,12 @@
             }
         }
 
-        async function superarReto(desafio) {
+        async function superarReto(desafio, yo) {
             var reto = Vida.crearReto(desafio.accion);
             var limite = Date.now() + 30000;
             ui.estado('reto');
             ui.instruccion(INSTRUCCION_RETO[desafio.accion] || INSTRUCCION_RETO.parpadear, 'reto');
-            while (!cancelado) {
+            while (yo === turno) {
                 var a = await analizar();
                 if (a.cantidad > 1) {
                     ui.instruccion(PISTAS.varias_caras, 'pista');
@@ -321,14 +334,14 @@
             }
         }
 
-        async function tomarDescriptores() {
+        async function tomarDescriptores(yo) {
             var tomados = [];
             // En celulares lentos cada captura puede tardar un par de segundos.
             var limite = Date.now() + 25000;
             ui.estado('capturando');
             ui.instruccion('¡Bien! Ahora mira al frente y no te muevas…', 'ok');
             ui.pasos(0);
-            while (tomados.length < config.cantidad && !cancelado) {
+            while (tomados.length < config.cantidad && yo === turno) {
                 var a = await analizar();
                 if (a.calidad.ok) {
                     var d = await descriptor();
@@ -349,7 +362,7 @@
         this.corriendo = function () { return corriendo; };
 
         this.cancelar = function () {
-            cancelado = true;
+            turno += 1;
             detener();
             corriendo = false;
             ui.estado('inactivo');
@@ -363,40 +376,44 @@
         this.ejecutar = async function () {
             if (corriendo) return null;
             corriendo = true;
-            cancelado = false;
+            var yo = turno += 1;
             ui.ocultarMensaje();
             ui.pasos(0);
             ui.progreso(0);
             try {
+                // Comprobaciones previas (por ejemplo, que la cuenta tenga rostro) antes de bajar los modelos.
+                if (config.antes) await config.antes();
                 if (esAppInterna()) ui.mensaje('aviso', MENSAJES.app_interna.titulo, MENSAJES.app_interna.texto);
                 ui.estado('cargando');
                 ui.instruccion('Preparando el reconocimiento facial… la primera vez puede tardar un poco.');
                 await cargarModelos();
-                if (cancelado) return null;
+                if (yo !== turno) return null;
                 ui.estado('camara');
                 ui.instruccion('Permite el acceso a la cámara cuando tu navegador lo pida.');
                 flujo = await abrirCamara(video);
-                if (cancelado) { detener(); return null; }
+                if (yo !== turno) { detener(); return null; }
                 ajustarLienzo();
                 ui.ocultarMensaje();
                 ui.estado('alineando');
-                await alinear();
-                if (cancelado) return null;
+                await alinear(yo);
+                if (yo !== turno) return null;
                 var desafio = await config.pedirDesafio();
-                await superarReto(desafio);
-                if (cancelado) return null;
-                var descriptores = await tomarDescriptores();
-                if (cancelado) return null;
+                await superarReto(desafio, yo);
+                if (yo !== turno) return null;
+                var descriptores = await tomarDescriptores(yo);
+                if (yo !== turno) return null;
                 ui.estado('verificando');
                 ui.instruccion('Verificando…');
                 var resultado = await config.enviar(descriptores, desafio.nonce);
                 detener();
                 ui.pasos(config.cantidad);
-                ui.instruccion(config.textoExito || '¡Listo!', 'ok');
+                ui.instruccion(typeof config.textoExito === 'function' ? config.textoExito(resultado) : (config.textoExito || '¡Listo!'), 'ok');
                 ui.estado('exito');
                 corriendo = false;
                 return resultado;
             } catch (error) {
+                // Si la persona canceló, no se muestran errores de un intento que ya no cuenta.
+                if (yo !== turno) return null;
                 detener();
                 ui.estado('error');
                 ui.instruccion('No se pudo completar.', 'error');
@@ -478,7 +495,8 @@
         iniciar.addEventListener('click', function () {
             if (!captura || captura.corriendo()) return;
             iniciar.disabled = true;
-            captura.ejecutar().then(function () {
+            captura.ejecutar().then(function (resultado) {
+                if (!resultado) return; // se canceló
                 // Un momento para ver la animación de éxito y se entra a la página de destino.
                 setTimeout(function () { window.location.href = destino; }, reducir ? 600 : 2400);
             }).catch(function (error) {
@@ -496,11 +514,134 @@
         });
     }
 
+    /* ---------- Página /login: pestañas Contraseña | Rostro ---------- */
+
+    // Este navegador recuerda SOLO el nombre de usuario (nunca el rostro) para no volver a escribirlo.
+    var CLAVE_USUARIO = 'ecoflora_rostro_usuario';
+    function leerRecordado() {
+        try { return window.localStorage.getItem(CLAVE_USUARIO) || ''; } catch (error) { return ''; }
+    }
+    function guardarRecordado(valor) {
+        try { window.localStorage.setItem(CLAVE_USUARIO, valor); } catch (error) { /* navegación privada */ }
+    }
+    function olvidarRecordado() {
+        try { window.localStorage.removeItem(CLAVE_USUARIO); } catch (error) { /* navegación privada */ }
+    }
+
+    function iniciarLogin(panelRostro) {
+        var barra = $('[data-login-modos]');
+        var pestanas = Array.prototype.slice.call(document.querySelectorAll('[data-login-tab]'));
+        var paneles = Array.prototype.slice.call(document.querySelectorAll('[data-login-panel]'));
+        var bloqueUsuario = $('[data-rostro-bloque-usuario]', panelRostro);
+        var campoUsuario = $('[data-rostro-usuario]', panelRostro);
+        var recordado = $('[data-rostro-recordado]', panelRostro);
+        var nombreRecordado = $('[data-rostro-recordado-nombre]', panelRostro);
+        var noSoy = $('[data-rostro-no-soy]', panelRostro);
+        var iniciar = $('[data-login-rostro-iniciar]', panelRostro);
+        var cancelar = $('[data-login-rostro-cancelar]', panelRostro);
+        var usuarioFijo = leerRecordado();
+
+        function usuarioActual() { return (usuarioFijo || campoUsuario.value).trim(); }
+
+        function pintarUsuario() {
+            recordado.hidden = !usuarioFijo;
+            bloqueUsuario.hidden = Boolean(usuarioFijo);
+            nombreRecordado.textContent = usuarioFijo;
+        }
+
+        var captura = new Captura(panelRostro, {
+            cantidad: 1,
+            sinPasos: true,
+            textoExito: function (resultado) {
+                var nombre = String((resultado && resultado.nombre) || '').split(' ')[0];
+                return nombre ? '¡Hola, ' + nombre + '! Entrando…' : '¡Bienvenido a EcoFlora!';
+            },
+            antes: function () { return api('/login/rostro/comprobar', { usuario: usuarioActual() }); },
+            pedirDesafio: function () { return api('/login/rostro/desafio', { usuario: usuarioActual() }).then(function (r) { return r.desafio; }); },
+            enviar: function (descriptores, nonce) { return api('/login/rostro', { usuario: usuarioActual(), desafio: nonce, descriptor: descriptores[0] }); }
+        });
+
+        function textoBotonInicial() { return '<i class="bi bi-camera-video me-2"></i>Entrar con mi rostro'; }
+
+        function detener() {
+            if (captura.corriendo()) captura.cancelar();
+            iniciar.disabled = false;
+            iniciar.innerHTML = textoBotonInicial();
+            cancelar.hidden = true;
+        }
+
+        function activar(nombre) {
+            pestanas.forEach(function (pestana) {
+                var activa = pestana.getAttribute('data-login-tab') === nombre;
+                pestana.classList.toggle('activo', activa);
+                pestana.setAttribute('aria-selected', activa ? 'true' : 'false');
+                pestana.tabIndex = activa ? 0 : -1;
+            });
+            paneles.forEach(function (panel) { panel.hidden = panel.getAttribute('data-login-panel') !== nombre; });
+            barra.setAttribute('data-activo', nombre);
+            if (nombre !== 'rostro') detener();
+        }
+
+        barra.hidden = false;
+        pestanas.forEach(function (pestana, i) {
+            pestana.addEventListener('click', function () { activar(pestana.getAttribute('data-login-tab')); });
+            // Flechas izquierda/derecha para moverse entre pestañas (accesibilidad).
+            pestana.addEventListener('keydown', function (evento) {
+                if (evento.key !== 'ArrowRight' && evento.key !== 'ArrowLeft') return;
+                var destino = pestanas[(i + (evento.key === 'ArrowRight' ? 1 : pestanas.length - 1)) % pestanas.length];
+                destino.focus();
+                activar(destino.getAttribute('data-login-tab'));
+            });
+        });
+
+        pintarUsuario();
+        // Quien ya entró con rostro en este navegador empieza directamente en la pestaña del rostro.
+        activar(usuarioFijo ? 'rostro' : 'clave');
+
+        noSoy.addEventListener('click', function () {
+            olvidarRecordado();
+            usuarioFijo = '';
+            campoUsuario.value = '';
+            detener();
+            pintarUsuario();
+            campoUsuario.focus();
+        });
+
+        iniciar.addEventListener('click', function () {
+            if (captura.corriendo()) return;
+            if (!usuarioActual()) {
+                campoUsuario.focus();
+                campoUsuario.classList.add('is-invalid');
+                return;
+            }
+            campoUsuario.classList.remove('is-invalid');
+            iniciar.disabled = true;
+            cancelar.hidden = false;
+            captura.ejecutar().then(function (resultado) {
+                if (!resultado) return;
+                guardarRecordado(usuarioActual());
+                cancelar.hidden = true;
+                setTimeout(function () { window.location.href = resultado.destino || '/'; }, reducir ? 600 : 2200);
+            }).catch(function () {
+                iniciar.disabled = false;
+                iniciar.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Intentar de nuevo';
+            });
+        });
+
+        cancelar.addEventListener('click', detener);
+        campoUsuario.addEventListener('input', function () { campoUsuario.classList.remove('is-invalid'); });
+        campoUsuario.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter') { evento.preventDefault(); iniciar.click(); }
+        });
+    }
+
     window.EcoRostro = { api: api, Captura: Captura, MENSAJES: MENSAJES, cargarModelos: cargarModelos };
 
     function arrancar() {
         var registro = $('[data-rostro-registro]');
         if (registro) iniciarRegistro(registro);
+        var login = $('[data-login-rostro]');
+        if (login) iniciarLogin(login);
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);

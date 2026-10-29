@@ -909,6 +909,23 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .rostro-mensaje[data-tipo="error"] { border-left-color: #e5738f; background: #fde6ec; color: #a4163a; }
 .rostro-botones { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; }
 
+/* Login: selector Contraseña | Rostro y usuario recordado */
+.login-modos { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 1.3rem; border-radius: 999px; background: rgba(45, 106, 79, 0.1); }
+.login-modos-marca { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 12px) / 2); border-radius: 999px; background: #fff; box-shadow: 0 4px 12px rgba(27, 67, 50, 0.18); transition: transform 0.45s var(--curva); }
+.login-modos[data-activo="rostro"] .login-modos-marca { transform: translateX(calc(100% + 4px)); }
+.login-modo { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.6rem 0.5rem; border: 0; border-radius: 999px; background: transparent; font-weight: 700; font-size: 0.92rem; color: var(--texto-suave); cursor: pointer; transition: color 0.3s; }
+.login-modo.activo { color: var(--verde-oscuro); }
+.login-modo:focus-visible { outline: 3px solid rgba(82, 183, 136, 0.5); outline-offset: 1px; }
+.rostro-recordado { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; padding: 0.7rem 0.9rem; border-radius: var(--radio-sm); background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(45, 106, 79, 0.15); }
+.rostro-recordado-icono { flex: none; width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; font-size: 1.3rem; color: #fff; background: linear-gradient(135deg, #1b7f5c, #5fd3a1); }
+.rostro-recordado-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.rostro-recordado-texto small { color: var(--texto-suave); }
+.rostro-recordado-texto strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rostro-enlace { padding: 0.3rem 0.2rem; border: 0; background: none; color: var(--verde-medio); font-weight: 700; font-size: 0.88rem; text-decoration: underline; cursor: pointer; }
+.rostro-enlace:hover { color: var(--verde-oscuro); }
+.rostro-botones-login { flex-direction: column; align-items: stretch; }
+.rostro-nota { margin: 0.9rem 0 0; text-align: center; font-size: 0.85rem; color: var(--texto-suave); }
+
 /* ---------- Adaptación a pantallas ---------- */
 @media (max-width: 991.98px) {
     .nav-eco .navbar-collapse { margin-top: 0.8rem; padding: 0.8rem; border-radius: 20px; background: rgba(10, 40, 28, 0.55); border: 1px solid rgba(255, 255, 255, 0.1); }

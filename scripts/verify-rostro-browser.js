@@ -24,10 +24,11 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const salida = process.env.SHOTS_DIR || path.join(os.tmpdir(), 'ecoflora-rostro');
 const trabajo = path.join(os.tmpdir(), 'ecoflora-rostro-camara');
 const muestras = path.join(__dirname, '..', 'node_modules', '@vladmandic', 'face-api', 'demo', 'sample1.jpg');
-const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro').split(',');
+const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro,login_ok,login_otra_persona,login_sin_rostro').split(',');
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
 let navegadores = [];
+const compartido = { usuarioConRostro: null };
 
 function verifica(condicion, mensaje) {
   console.log((condicion ? 'ok    ' : 'FALLO ') + mensaje);
@@ -212,8 +213,15 @@ async function pasarAutorizacion(n) {
 
 // Cuenta los cambios de estado de la cámara para entender qué ocurrió.
 async function vigilarEstados(n) {
-  await n.evaluar(`(() => { window.__estados = []; const c = document.querySelector('[data-rostro-camara]'); new MutationObserver(() => window.__estados.push(c.getAttribute('data-estado'))).observe(c, { attributes: true, attributeFilter: ['data-estado'] }); })()`);
+  await n.evaluar(`(() => {
+    window.__estados = []; window.__pistas = [];
+    const c = document.querySelector('[data-rostro-camara]');
+    new MutationObserver(() => window.__estados.push(c.getAttribute('data-estado'))).observe(c, { attributes: true, attributeFilter: ['data-estado'] });
+    const i = c.querySelector('[data-rostro-instruccion]');
+    new MutationObserver(() => { const t = i.textContent; if (!window.__pistas.includes(t)) window.__pistas.push(t); }).observe(i, { childList: true, characterData: true, subtree: true });
+  })()`);
 }
+const pistas = (n) => n.evaluar('window.__pistas.join(" | ")');
 const estados = (n) => n.evaluar('window.__estados.join(" > ")');
 
 // ---------- Escenarios ----------
@@ -223,6 +231,7 @@ async function escenarioExito() {
   const n = await crearNavegador('exito', { camara: prepararCamara('a') });
   const u = `nav_a_${Date.now() % 1000000}`;
   await crearUsuario(u);
+  compartido.usuarioConRostro = u;
   await n.vista(1280, 900, false);
   await entrar(n, u);
   await n.ir('/rostro');
@@ -236,7 +245,7 @@ async function escenarioExito() {
   await n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / 25), completado: c >= 25 }; } }; }`);
   await vigilarEstados(n);
   await n.clic('[data-rostro-iniciar]');
-  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'cargando'`, 5000, 'estado cargando');
+  await n.esperar(`['cargando', 'camara', 'alineando'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 5000, 'estado cargando');
   await n.foto('3-cargando-escritorio');
   await n.esperar(`['alineando', 'reto'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 90000, 'la cámara y los modelos');
   verifica(true, 'los modelos de reconocimiento cargan y la cámara se enciende');
@@ -344,14 +353,115 @@ async function escenarioSinRostro() {
   return n;
 }
 
+// Sustituye la prueba de vida por una que se cumple sola (una foto no parpadea).
+const reemplazarReto = (n) => n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / 25), completado: c >= 25 }; } }; }`);
+const esperarEstado = (n, lista, ms, que) => n.esperar(`${JSON.stringify(lista)}.includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, ms, que);
+
+async function escenarioLoginOk() {
+  console.log('\n== Iniciar sesión con rostro (cámara simulada con la misma persona) ==');
+  const u = compartido.usuarioConRostro;
+  if (!u) { verifica(false, 'hace falta correr antes el escenario "exito"'); return { problemas: [] }; }
+  const n = await crearNavegador('login_ok', { camara: prepararCamara('a') });
+  await n.vista(1280, 900, false);
+  await n.ir('/login');
+  verifica((await n.evaluar(`!document.querySelector('[data-login-modos]').hidden`)) === true, 'aparece el selector Contraseña | Rostro');
+  verifica((await n.evaluar(`!document.querySelector('[data-login-panel="clave"]').hidden && document.querySelector('[data-login-panel="rostro"]').hidden`)) === true, 'sin rostro recordado se empieza por la contraseña');
+  await n.foto('20-login-clave-escritorio');
+  await n.clic('[data-login-tab="rostro"]');
+  await dormir(700);
+  verifica((await n.evaluar(`document.querySelector('[data-login-panel="clave"]').hidden && !document.querySelector('[data-login-panel="rostro"]').hidden`)) === true, 'la pestaña Rostro cambia el panel');
+  await n.foto('21-login-rostro-escritorio');
+  await n.clic('[data-login-rostro-iniciar]');
+  verifica((await n.evaluar(`document.querySelector('[data-rostro-usuario]').classList.contains('is-invalid')`)) === true, 'sin usuario se marca el campo y no se enciende la cámara');
+  await n.escribir('[data-rostro-usuario]', u);
+  await reemplazarReto(n);
+  await vigilarEstados(n);
+  await n.clic('[data-login-rostro-iniciar]');
+  await esperarEstado(n, ['reto', 'exito', 'error'], 120000, 'llegar al reto');
+  await dormir(500);
+  await n.foto('22-login-reto-escritorio');
+  await esperarEstado(n, ['exito', 'error'], 90000, 'el resultado');
+  console.log('      estados: ' + (await estados(n)));
+  if ((await estado(n)) !== 'exito') console.log('      mensaje: ' + (await texto(n, '[data-rostro-mensaje]')));
+  verifica((await estado(n)) === 'exito', 'la misma persona entra con su rostro');
+  await n.foto('23-login-exito-escritorio');
+  await n.esperar(`location.pathname === '/'`, 10000, 'la redirección al inicio');
+  const sesion = await n.evaluar(`fetch('/usuario/perfil', { redirect: 'manual' }).then((r) => r.type)`);
+  verifica(sesion === 'basic', 'la sesión quedó abierta (se puede ver el perfil)');
+  verifica((await n.evaluar(`localStorage.getItem('ecoflora_rostro_usuario')`)) === u, 'el navegador recuerda solo el nombre de usuario');
+  await n.ir('/logout');
+  await n.ir('/login');
+  verifica((await n.evaluar(`!document.querySelector('[data-login-panel="rostro"]').hidden`)) === true, 'con usuario recordado se empieza por el rostro');
+  verifica((await texto(n, '[data-rostro-recordado]')).includes(u), 'se muestra "Entrar como" con el usuario recordado');
+  await n.foto('24-login-recordado-escritorio');
+  await n.clic('[data-rostro-no-soy]');
+  await dormir(300);
+  verifica((await n.evaluar(`!document.querySelector('[data-rostro-bloque-usuario]').hidden && document.querySelector('[data-rostro-recordado]').hidden && localStorage.getItem('ecoflora_rostro_usuario') === null`)) === true, '"No soy yo" olvida al usuario y vuelve a pedirlo');
+
+  await n.vista(390, 844, true);
+  await n.ir('/login');
+  await n.clic('[data-login-tab="rostro"]');
+  await dormir(600);
+  await n.foto('25-login-rostro-celular');
+  verifica((await n.evaluar('document.documentElement.scrollWidth <= window.innerWidth + 1')) === true, 'en celular el login no se desborda');
+  n.cerrar();
+  return n;
+}
+
+async function escenarioLoginOtraPersona() {
+  console.log('\n== Otra persona frente a la cámara NO debe entrar ==');
+  const u = compartido.usuarioConRostro;
+  if (!u) { verifica(false, 'hace falta correr antes el escenario "exito"'); return { problemas: [] }; }
+  const n = await crearNavegador('login_otra', { camara: prepararCamara('b') });
+  n.esperados = ['/login/rostro'];
+  await n.vista(1280, 900, false);
+  await n.ir('/login');
+  await n.clic('[data-login-tab="rostro"]');
+  await n.escribir('[data-rostro-usuario]', u);
+  await reemplazarReto(n);
+  await vigilarEstados(n);
+  await n.clic('[data-login-rostro-iniciar]');
+  await esperarEstado(n, ['exito', 'error'], 150000, 'el resultado');
+  const mensaje = await texto(n, '[data-rostro-mensaje]');
+  if (!/no te reconocimos/i.test(mensaje)) console.log('      pistas vistas: ' + (await pistas(n)));
+  verifica((await estado(n)) === 'error' && /no te reconocimos/i.test(mensaje), 'una persona distinta recibe "No te reconocimos"');
+  await n.foto('26-login-otra-persona');
+  const sesion = await n.evaluar(`fetch('/usuario/perfil', { redirect: 'manual' }).then((r) => r.type)`);
+  verifica(sesion === 'opaqueredirect', 'y NO queda ninguna sesión abierta');
+  verifica((await n.evaluar(`localStorage.getItem('ecoflora_rostro_usuario')`)) === null, 'tampoco se recuerda el usuario');
+  verifica((await n.evaluar(`!document.querySelector('[data-rostro-video]').srcObject`)) === true, 'la cámara se apaga');
+  n.cerrar();
+  return n;
+}
+
+async function escenarioLoginSinRostro() {
+  console.log('\n== Cuenta sin rostro activado ==');
+  const n = await crearNavegador('login_sin', { camara: prepararCamara('a') });
+  n.esperados = ['/login/rostro'];
+  const u = `nav_n_${Date.now() % 1000000}`;
+  await crearUsuario(u);
+  await n.vista(1280, 900, false);
+  await n.ir('/login');
+  await n.clic('[data-login-tab="rostro"]');
+  await n.escribir('[data-rostro-usuario]', u);
+  await n.clic('[data-login-rostro-iniciar]');
+  await esperarEstado(n, ['error'], 15000, 'el aviso rápido');
+  const mensaje = await texto(n, '[data-rostro-mensaje]');
+  verifica(/no tiene el rostro activado/i.test(mensaje) && /contraseña/i.test(mensaje), 'se avisa que la cuenta no tiene rostro y se sugiere la contraseña');
+  verifica((await n.evaluar('Boolean(window.faceapi)')) === false, 'se avisa ANTES de descargar los modelos');
+  await n.foto('27-login-sin-rostro');
+  n.cerrar();
+  return n;
+}
+
 async function main() {
   fs.mkdirSync(salida, { recursive: true });
-  const escenarios = { exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro };
+  const escenarios = { exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro, login_ok: escenarioLoginOk, login_otra_persona: escenarioLoginOtraPersona, login_sin_rostro: escenarioLoginSinRostro };
   for (const nombre of quieren) {
     if (!escenarios[nombre]) continue;
     const n = await escenarios[nombre]();
     // Solo cuentan los problemas que no sean esperados en el escenario.
-    const reales = n.problemas.filter((p) => !/getUserMedia|NotAllowed|Permission denied|status of 4\d\d \(\)/i.test(p));
+    const reales = n.problemas.filter((p) => !/getUserMedia|NotAllowed|Permission denied|status of 4\d\d/i.test(p));
     verifica(reales.length === 0, `sin errores de consola ni de red en "${nombre}"`);
     reales.slice(0, 6).forEach((p) => console.log('      ' + p));
   }

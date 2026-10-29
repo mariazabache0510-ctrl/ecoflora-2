@@ -8,6 +8,7 @@ const { cartCount } = require('./cart');
 const { registerRoutes } = require('./routes');
 const { contacto, whatsappDe } = require('./contacto');
 const { fechaColombia } = require('./mailer');
+const rostro = require('./rostro');
 const {
   formatPrice,
   nl2br,
@@ -131,6 +132,8 @@ function createApp() {
       res.locals.sesion = req.session.id_usuario ? req.session : null;
       res.locals.items_carrito = await cartCount(req);
       res.locals.currentPath = req.path;
+      // El inicio con rostro solo se ofrece si el sitio tiene su clave de cifrado configurada.
+      res.locals.rostroDisponible = rostro.disponible();
       res.locals.queryError = typeof req.query.error === 'string' ? req.query.error : '';
       next();
     } catch (error) {

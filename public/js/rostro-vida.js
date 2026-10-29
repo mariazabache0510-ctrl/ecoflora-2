@@ -9,8 +9,8 @@
 
     // ---- Ajustes (si la prueba se siente muy fácil o muy difícil, cambia estos números) ----
     var AJUSTES = {
-        luzMinima: 55,          // brillo medio (0 a 255) por debajo del cual hay "poca luz"
-        luzMaxima: 238,         // por encima hay demasiada luz o contraluz
+        luzMinima: 40,          // brillo medio de la CARA (0 a 255) por debajo del cual hay "poca luz"
+        luzMaxima: 235,         // por encima la cara está quemada por exceso de luz
         tamanoMinimo: 0.30,     // ancho de la cara respecto al círculo visible: menos es "muy lejos"
         tamanoMaximo: 0.88,     // más es "muy cerca"
         descentrado: 0.22,      // cuánto puede alejarse el centro de la cara del centro del círculo
@@ -51,7 +51,7 @@
     }
 
     // ¿Se puede usar este cuadro para reconocer? Devuelve { ok, codigo }.
-    // caras: [{ caja: {x, y, width, height}, puntaje }]; ancho y alto del video; luz: brillo medio.
+    // caras: [{ caja: {x, y, width, height}, puntaje }]; ancho y alto del video; luz: brillo medio de la cara.
     function evaluarCalidad(entrada) {
         var caras = entrada.caras || [];
         if (!caras.length) return { ok: false, codigo: 'sin_rostro' };
