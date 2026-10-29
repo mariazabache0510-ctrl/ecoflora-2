@@ -70,6 +70,7 @@
                                         <li><a class="dropdown-item<%= activo('/admin', true) ? ' active' : '' %>" href="/admin"><i class="bi bi-speedometer2"></i>Panel Admin</a></li>
                                         <li><a class="dropdown-item<%= activo('/admin/usuarios') ? ' active' : '' %>" href="/admin/usuarios"><i class="bi bi-people"></i>Usuarios</a></li>
                                         <li><a class="dropdown-item<%= activo('/admin/pedidos') ? ' active' : '' %>" href="/admin/pedidos"><i class="bi bi-truck"></i>Pedidos</a></li>
+                                        <li><a class="dropdown-item<%= activo('/admin/mensajes') ? ' active' : '' %>" href="/admin/mensajes"><i class="bi bi-chat-dots"></i>Mensajes</a></li>
                                     <% } else { %>
                                         <li><a class="dropdown-item<%= activo('/usuario', true) ? ' active' : '' %>" href="/usuario"><i class="bi bi-person"></i>Mi Panel</a></li>
                                         <li><a class="dropdown-item<%= activo('/usuario/domicilios') ? ' active' : '' %>" href="/usuario/domicilios"><i class="bi bi-truck"></i>Mis Pedidos</a></li>

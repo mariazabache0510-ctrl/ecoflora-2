@@ -537,6 +537,37 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 .info-contacto:hover .icono { transform: rotate(-10deg) scale(1.1); }
 .info-contacto strong { display: block; }
 .info-contacto span { color: var(--texto-suave); }
+.info-contacto a { color: var(--texto-suave); text-decoration: none; overflow-wrap: anywhere; background: linear-gradient(var(--verde-claro), var(--verde-claro)) no-repeat 0 100% / 0% 2px; transition: background-size 0.45s var(--curva), color 0.3s; }
+.info-contacto a:hover, .info-contacto a:focus-visible { color: var(--verde-oscuro); background-size: 100% 2px; }
+.campo-trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.whatsapp-tarjeta {
+    position: relative; overflow: hidden; display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.2rem; margin-bottom: 1.1rem;
+    border-color: rgba(37, 211, 102, 0.45); background: linear-gradient(135deg, rgba(232, 252, 240, 0.95), rgba(255, 255, 255, 0.9));
+    transition: transform 0.35s var(--curva), box-shadow 0.35s;
+}
+.whatsapp-tarjeta::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; transform: skewX(-20deg); pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.8), transparent); animation: brillo-wa 6s ease-in-out 1.2s infinite;
+}
+.whatsapp-tarjeta:hover { transform: translateY(-4px); box-shadow: 0 22px 44px rgba(18, 140, 126, 0.25); }
+.wa-icono {
+    position: relative; flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem; color: #fff;
+    background: linear-gradient(135deg, #25d366, #128c7e); box-shadow: 0 10px 22px rgba(18, 140, 126, 0.35);
+}
+.wa-icono::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(37, 211, 102, 0.7); animation: anillo-wa 2.2s ease-out infinite; }
+.wa-icono i { animation: flotar-suave 3.2s ease-in-out infinite; }
+.wa-texto { flex: 1; min-width: 0; }
+.wa-texto strong { display: block; color: var(--verde-oscuro); line-height: 1.25; }
+.wa-texto small { display: block; margin-top: 0.15rem; color: var(--texto-suave); line-height: 1.35; }
+.wa-numero { white-space: nowrap; font-weight: 600; color: #128c7e; }
+.btn-whatsapp { flex: none; color: #fff; border: 0; padding: 0.65rem 1.3rem; background: linear-gradient(135deg, #25d366, #128c7e); box-shadow: 0 8px 20px rgba(18, 140, 126, 0.35); }
+.btn-whatsapp:hover, .btn-whatsapp:focus { color: #fff; box-shadow: 0 14px 28px rgba(18, 140, 126, 0.5); }
+@keyframes brillo-wa { 0% { left: -60%; } 28%, 100% { left: 130%; } }
+@keyframes anillo-wa { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(1.6); opacity: 0; } }
+@media (max-width: 575px) {
+    .whatsapp-tarjeta { flex-wrap: wrap; }
+    .whatsapp-tarjeta .btn-whatsapp { width: 100%; }
+}
 
 /* ---------- Nosotros ---------- */
 .nosotros-collage { position: relative; min-height: 440px; --cx: 0; --cy: 0; }
@@ -597,6 +628,19 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 .pedido-cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 1rem 1.4rem; background: rgba(216, 243, 220, 0.55); border-bottom: 1px solid rgba(45, 106, 79, 0.12); }
 .pedido-cuerpo { padding: 1.2rem 1.4rem 1.3rem; }
 .pedido-linea { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; border-bottom: 1px dashed rgba(45, 106, 79, 0.2); }
+.accion-badge { flex: none; min-width: 28px; height: 28px; padding: 0 0.5rem; border-radius: 999px; display: inline-grid; place-items: center; font-size: 0.8rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, #25d366, #128c7e); animation: latido 2.4s ease-in-out infinite; }
+.accion-badge { margin-left: auto; }
+.accion-badge + .a-flecha { margin-left: 0.5rem; }
+.mensaje-tarjeta { border-left: 5px solid transparent; }
+.mensaje-nuevo { border-left-color: #25d366; }
+.mensaje-datos { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; margin-bottom: 0.9rem; }
+.mensaje-datos a { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.mensaje-datos a i { color: var(--verde-claro); }
+.mensaje-texto { padding: 0.95rem 1.1rem; border-radius: var(--radio-sm); border-left: 4px solid var(--verde-claro); background: rgba(216, 243, 220, 0.5); color: #2b4237; overflow-wrap: anywhere; }
+.mensaje-acciones { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+.mensaje-acciones form { margin: 0; }
+.mensaje-acciones .btn { padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+.mensaje-tarjeta .estado { text-transform: none; }
 .exito-pedido { display: flex; align-items: center; gap: 0.8rem; }
 .exito-pedido i { font-size: 1.4rem; animation: pop 0.6s var(--curva); }
 .acciones-pie { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1.4rem; }
@@ -628,6 +672,8 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 .pie-enlaces a:hover { color: #fff; transform: translateX(4px); }
 .pie-enlaces a:hover i { opacity: 1; margin-left: -0.1rem; color: #95d5b2; }
 .pie-contacto li { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.7rem; color: rgba(255, 255, 255, 0.78); }
+.pie-contacto a { color: inherit; text-decoration: none; overflow-wrap: anywhere; transition: color 0.3s; }
+.pie-contacto a:hover, .pie-contacto a:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .pie-icono { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: rgba(255, 255, 255, 0.1); color: #95d5b2; transition: transform 0.4s var(--curva), background 0.3s, color 0.3s; }
 .pie-contacto li:hover .pie-icono { transform: rotate(-10deg) scale(1.12); background: #95d5b2; color: var(--verde-oscuro); }
 .pie-final { display: flex; justify-content: space-between; align-items: center; margin-top: 1.8rem; padding-top: 1.1rem; border-top: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.6); }

@@ -6,10 +6,20 @@
             <span class="seccion-etiqueta"><i class="bi bi-chat-heart"></i>Hablemos</span>
             <h1 class="seccion-titulo text-start">Contáctanos</h1>
             <p class="text-muted mb-4">¿Tienes dudas sobre el cuidado de una planta, disponibilidad o domicilios? Escríbenos.</p>
-            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-geo-alt"></i></span><div><strong>Dirección</strong><span>Calle 123 #45-67, Bogotá</span></div></div>
-            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-telephone"></i></span><div><strong>Teléfono</strong><span>(601) 123-4567</span></div></div>
-            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-envelope"></i></span><div><strong>Email</strong><span>hola@ecoflora.com</span></div></div>
-            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-clock"></i></span><div><strong>Horario</strong><span>Lun - Sáb: 8:00 a.m. - 6:00 p.m.</span></div></div>
+
+            <div class="whatsapp-tarjeta vidrio">
+                <span class="wa-icono"><i class="bi bi-whatsapp"></i></span>
+                <div class="wa-texto">
+                    <strong>Habla con nosotros por WhatsApp</strong>
+                    <small>Respuesta directa al <span class="wa-numero"><%= contacto.telefono %></span></small>
+                </div>
+                <a href="<%= contacto.whatsappHref %>" class="btn btn-whatsapp" target="_blank" rel="noopener noreferrer"><i class="bi bi-whatsapp me-2"></i>Escribir</a>
+            </div>
+
+            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-geo-alt"></i></span><div><strong>Dirección</strong><span><%= contacto.direccion %></span></div></div>
+            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-telephone"></i></span><div><strong>Teléfono</strong><a href="<%= contacto.telefonoHref %>"><%= contacto.telefono %></a></div></div>
+            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-envelope"></i></span><div><strong>Email</strong><a href="<%= contacto.emailHref %>"><%= contacto.email %></a></div></div>
+            <div class="info-contacto vidrio"><span class="icono"><i class="bi bi-clock"></i></span><div><strong>Horario</strong><span><%= contacto.horario %></span></div></div>
         </div>
         <div class="col-lg-7">
             <div class="form-tarjeta vidrio reveal" style="--i: 1">
@@ -20,26 +30,30 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="nombre">Nombre *</label>
-                            <div class="campo"><i class="bi bi-person"></i><input type="text" id="nombre" name="nombre" class="form-control" required></div>
+                            <div class="campo"><i class="bi bi-person"></i><input type="text" id="nombre" name="nombre" class="form-control" maxlength="100" value="<%= valores.nombre || '' %>" required></div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="email">Email *</label>
-                            <div class="campo"><i class="bi bi-envelope"></i><input type="email" id="email" name="email" class="form-control" required></div>
+                            <div class="campo"><i class="bi bi-envelope"></i><input type="email" id="email" name="email" class="form-control" maxlength="150" value="<%= valores.email || '' %>" required></div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" for="telefono">Teléfono</label>
-                            <div class="campo"><i class="bi bi-telephone"></i><input type="text" id="telefono" name="telefono" class="form-control"></div>
+                            <label class="form-label" for="telefono">Teléfono / WhatsApp</label>
+                            <div class="campo"><i class="bi bi-telephone"></i><input type="text" id="telefono" name="telefono" class="form-control" maxlength="30" value="<%= valores.telefono || '' %>"></div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="asunto">Asunto</label>
-                            <div class="campo"><i class="bi bi-tag"></i><input type="text" id="asunto" name="asunto" class="form-control"></div>
+                            <div class="campo"><i class="bi bi-tag"></i><input type="text" id="asunto" name="asunto" class="form-control" maxlength="120" value="<%= valores.asunto || '' %>"></div>
                         </div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label" for="mensaje">Mensaje *</label>
-                        <textarea id="mensaje" name="mensaje" class="form-control" rows="4" required></textarea>
+                        <textarea id="mensaje" name="mensaje" class="form-control" rows="4" maxlength="2000" required><%= valores.mensaje || '' %></textarea>
+                    </div>
+                    <div class="campo-trampa" aria-hidden="true">
+                        <label for="sitio_web">Deja este campo vacío</label>
+                        <input type="text" id="sitio_web" name="sitio_web" tabindex="-1" autocomplete="off">
                     </div>
                     <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-send me-2"></i>Enviar mensaje</button>
                 </form>

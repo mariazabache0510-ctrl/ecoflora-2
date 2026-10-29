@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const { Historial, nextId } = require('./models');
 const { cartCount } = require('./cart');
 const { registerRoutes } = require('./routes');
+const { contacto, whatsappDe } = require('./contacto');
+const { fechaColombia } = require('./mailer');
 const {
   formatPrice,
   nl2br,
@@ -59,6 +61,9 @@ function createApp() {
   app.locals.plantImg = plantImg;
   app.locals.ESTADOS = ESTADOS;
   app.locals.COLORES_ESTADO = COLORES_ESTADO;
+  app.locals.contacto = contacto;
+  app.locals.whatsappDe = whatsappDe;
+  app.locals.fechaColombia = fechaColombia;
   app.locals.partial = (name) => path.join(viewsDir, 'partials', `${name}.ejs`);
 
   app.get('/health', async (req, res) => {

@@ -3,6 +3,12 @@ const { hashPassword, verifyPassword } = require('./passwords');
 const { getCartItems, addItem, updateQuantities, removeItem, mergeGuestCart } = require('./cart');
 const { placeOrder, StockError } = require('./orders');
 const { escapeRegex, ESTADOS } = require('./helpers');
+const { enviarMensajeContacto } = require('./mailer');
+const { crearLimitador } = require('./limite');
+
+// Como máximo 5 mensajes por IP cada 10 minutos en el formulario de contacto.
+const limiteContacto = crearLimitador({ max: 5, ventanaMs: 10 * 60 * 1000 });
+const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const collation = { locale: 'es', strength: 2 };
 
@@ -110,33 +116,49 @@ function registerRoutes(app) {
   });
 
   app.get('/contacto', (req, res) => {
-    res.render('contacto', { error: '', exito: '' });
+    res.render('contacto', { error: '', exito: '', valores: {} });
   });
 
   app.post('/contacto', async (req, res, next) => {
     try {
-      const nombre = String(req.body.nombre || '').trim();
-      const email = String(req.body.email || '').trim();
-      const telefono = String(req.body.telefono || '').trim();
-      const asunto = String(req.body.asunto || '').trim();
-      const mensaje = String(req.body.mensaje || '').trim();
-      if (!nombre || !email || !mensaje) {
-        return res.render('contacto', { error: 'Completa los campos obligatorios.', exito: '' });
+      const valores = {
+        nombre: String(req.body.nombre || '').trim().slice(0, 100),
+        email: String(req.body.email || '').trim().slice(0, 150),
+        telefono: String(req.body.telefono || '').trim().slice(0, 30),
+        asunto: String(req.body.asunto || '').trim().slice(0, 120),
+        mensaje: String(req.body.mensaje || '').trim().slice(0, 2000)
+      };
+      const exito = 'Mensaje enviado correctamente. Te contactaremos pronto.';
+
+      // Campo trampa oculto: solo los robots lo llenan. Se responde como si todo hubiera salido bien.
+      if (String(req.body.sitio_web || '').trim()) {
+        return res.render('contacto', { error: '', exito, valores: {} });
       }
+      if (!valores.nombre || !valores.email || !valores.mensaje) {
+        return res.status(400).render('contacto', { error: 'Completa los campos obligatorios.', exito: '', valores });
+      }
+      if (!CORREO_VALIDO.test(valores.email)) {
+        return res.status(400).render('contacto', { error: 'Escribe un correo válido para poder responderte.', exito: '', valores });
+      }
+      if (!limiteContacto.permitir(req.ip || 'sin-ip')) {
+        return res.status(429).render('contacto', {
+          error: 'Enviaste varios mensajes seguidos. Intenta de nuevo en unos minutos o escríbenos por WhatsApp.',
+          exito: '',
+          valores
+        });
+      }
+
+      // Primero se guarda (así nunca se pierde) y después se intenta el correo.
       const id = await nextId('contactos');
-      await Contacto.create({
-        id_contacto: id,
-        nombre,
-        email,
-        telefono,
-        asunto,
-        mensaje,
-        leido: false
-      });
-      return res.render('contacto', {
-        error: '',
-        exito: 'Mensaje enviado correctamente. Te contactaremos pronto.'
-      });
+      const registro = await Contacto.create({ id_contacto: id, ...valores, leido: false });
+      const envio = await enviarMensajeContacto({ ...valores, fecha: registro.fecha });
+      if (!envio.enviado) console.error(`Contacto #${id}: no se pudo enviar el correo (${envio.motivo})`);
+      await Contacto.updateOne(
+        { id_contacto: id },
+        { correo_enviado: envio.enviado, error_envio: envio.enviado ? '' : String(envio.motivo || '').slice(0, 300) }
+      );
+
+      return res.render('contacto', { error: '', exito, valores: {} });
     } catch (error) {
       return next(error);
     }
@@ -368,13 +390,14 @@ function registerRoutes(app) {
 
   app.get('/admin', requireAdmin, async (req, res, next) => {
     try {
-      const [totalPlantas, totalPedidos, totalUsuarios, pendientes] = await Promise.all([
+      const [totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer] = await Promise.all([
         Planta.countDocuments(),
         Pedido.countDocuments(),
         Usuario.countDocuments({ rol: 'cliente' }),
-        Pedido.countDocuments({ estado: 'pendiente' })
+        Pedido.countDocuments({ estado: 'pendiente' }),
+        Contacto.countDocuments({ leido: { $ne: true } })
       ]);
-      res.render('admin/panel', { totalPlantas, totalPedidos, totalUsuarios, pendientes });
+      res.render('admin/panel', { totalPlantas, totalPedidos, totalUsuarios, pendientes, mensajesSinLeer });
     } catch (error) {
       next(error);
     }
@@ -481,6 +504,37 @@ function registerRoutes(app) {
         }
       }
       res.redirect('/admin/pedidos');
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Mensajes del formulario de contacto (respaldo por si el correo no llega).
+  app.get('/admin/mensajes', requireAdmin, async (req, res, next) => {
+    try {
+      const mensajes = await Contacto.find().sort({ fecha: -1 }).limit(200).lean();
+      const sinLeer = mensajes.filter((mensaje) => !mensaje.leido).length;
+      res.render('admin/mensajes', { mensajes, sinLeer, eliminado: req.query.eliminado === '1' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/admin/mensajes/:id/leido', requireAdmin, async (req, res, next) => {
+    try {
+      const id = parseInt(req.params.id, 10) || 0;
+      await Contacto.updateOne({ id_contacto: id }, { $set: { leido: req.body.leido !== '0' } });
+      res.redirect('/admin/mensajes');
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/admin/mensajes/:id/eliminar', requireAdmin, async (req, res, next) => {
+    try {
+      const id = parseInt(req.params.id, 10) || 0;
+      await Contacto.deleteOne({ id_contacto: id });
+      res.redirect('/admin/mensajes?eliminado=1');
     } catch (error) {
       next(error);
     }

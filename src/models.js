@@ -129,6 +129,8 @@ const contactoSchema = new mongoose.Schema(
     asunto: { type: String, default: '' },
     mensaje: { type: String, required: true },
     leido: { type: Boolean, default: false },
+    correo_enviado: { type: Boolean, default: false },
+    error_envio: { type: String, default: '' },
     fecha: { type: Date, default: Date.now }
   },
   { versionKey: false, collection: 'contactos' }

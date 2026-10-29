@@ -1,0 +1,67 @@
+<%- include(partial('header')) %>
+
+<div class="container contenedor-pagina">
+    <div class="panel-cabecera reveal">
+        <span class="panel-icono"><i class="bi bi-chat-dots"></i></span>
+        <div>
+            <h1>Mensajes de contacto</h1>
+            <p><%= mensajes.length %> mensaje<%= mensajes.length === 1 ? '' : 's' %><%= sinLeer > 0 ? ' · ' + sinLeer + ' sin leer' : '' %></p>
+        </div>
+    </div>
+
+    <% if (eliminado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Mensaje eliminado correctamente.</div><% } %>
+
+    <% if (!mensajes.length) { %>
+    <div class="vacio vidrio reveal">
+        <i class="bi bi-inbox"></i>
+        <p class="mt-3 text-muted mb-0">Aún no han llegado mensajes desde el formulario de contacto.</p>
+    </div>
+    <% } else { %>
+    <% mensajes.forEach(function(m, i) {
+        const asunto = String(m.asunto || '').trim();
+        const wa = whatsappDe(m.telefono, 'Hola ' + m.nombre + ', te escribimos de EcoFlora.');
+        const respuesta = 'mailto:' + m.email + '?subject=' + encodeURIComponent('Re: ' + (asunto || 'Tu mensaje a EcoFlora'));
+    %>
+    <article class="pedido-tarjeta mensaje-tarjeta vidrio reveal<%= m.leido ? '' : ' mensaje-nuevo' %>" id="mensaje-<%= m.id_contacto %>" style="--i: <%= i % 6 %>">
+        <div class="pedido-cabecera">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="avatar-tabla"><%= String(m.nombre || '?').trim().charAt(0).toUpperCase() %></span>
+                <strong><%= m.nombre %></strong>
+                <% if (!m.leido) { %><span class="estado estado-pendiente">Nuevo</span><% } %>
+                <% if (m.correo_enviado === true) { %>
+                <span class="estado estado-entregado" title="El mensaje llegó a tu correo">Correo enviado</span>
+                <% } else if (m.correo_enviado === false) { %>
+                <span class="estado estado-cancelado" title="<%= m.error_envio || 'No se pudo enviar el correo' %>">Correo no enviado</span>
+                <% } %>
+            </div>
+            <small class="text-muted"><i class="bi bi-calendar3 me-1"></i><%= fechaColombia(m.fecha) %></small>
+        </div>
+        <div class="pedido-cuerpo">
+            <div class="mensaje-datos">
+                <a href="mailto:<%= m.email %>"><i class="bi bi-envelope"></i><%= m.email %></a>
+                <% if (m.telefono) { %><a href="tel:<%= String(m.telefono).replace(/[^\d+]/g, '') %>"><i class="bi bi-telephone"></i><%= m.telefono %></a><% } %>
+                <% if (asunto) { %><span class="dato-chip"><i class="bi bi-tag"></i><%= asunto %></span><% } %>
+            </div>
+            <div class="mensaje-texto"><%- nl2br(m.mensaje) %></div>
+            <div class="mensaje-acciones">
+                <a href="<%= respuesta %>" class="btn btn-ecoflora btn-sm"><i class="bi bi-reply me-1"></i>Responder por correo</a>
+                <% if (wa) { %><a href="<%= wa %>" class="btn btn-whatsapp btn-sm" target="_blank" rel="noopener noreferrer"><i class="bi bi-whatsapp me-1"></i>WhatsApp</a><% } %>
+                <form method="POST" action="/admin/mensajes/<%= m.id_contacto %>/leido">
+                    <input type="hidden" name="leido" value="<%= m.leido ? '0' : '1' %>">
+                    <button type="submit" class="btn btn-suave btn-sm"><i class="bi bi-<%= m.leido ? 'envelope' : 'envelope-open' %> me-1"></i><%= m.leido ? 'Marcar como no leído' : 'Marcar como leído' %></button>
+                </form>
+                <form method="POST" action="/admin/mensajes/<%= m.id_contacto %>/eliminar" onsubmit="return confirm('¿Eliminar este mensaje?');">
+                    <button type="submit" class="btn btn-peligro-suave btn-sm"><i class="bi bi-trash me-1"></i>Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    <% }) %>
+    <% } %>
+
+    <div class="acciones-pie">
+        <a href="/admin" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

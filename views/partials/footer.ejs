@@ -31,9 +31,10 @@
                 <div class="col-6 col-lg-4">
                     <h5 class="pie-titulo">Contacto</h5>
                     <ul class="list-unstyled pie-contacto">
-                        <li><span class="pie-icono"><i class="bi bi-geo-alt"></i></span>Calle 123 #45-67, Bogotá</li>
-                        <li><span class="pie-icono"><i class="bi bi-telephone"></i></span>(601) 123-4567</li>
-                        <li><span class="pie-icono"><i class="bi bi-envelope"></i></span>hola@ecoflora.com</li>
+                        <li><span class="pie-icono"><i class="bi bi-geo-alt"></i></span><span><%= contacto.direccion %></span></li>
+                        <li><span class="pie-icono"><i class="bi bi-telephone"></i></span><a href="<%= contacto.telefonoHref %>"><%= contacto.telefono %></a></li>
+                        <li><span class="pie-icono"><i class="bi bi-whatsapp"></i></span><a href="<%= contacto.whatsappHref %>" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></li>
+                        <li><span class="pie-icono"><i class="bi bi-envelope"></i></span><a href="<%= contacto.emailHref %>"><%= contacto.email %></a></li>
                     </ul>
                 </div>
             </div>

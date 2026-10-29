@@ -43,28 +43,36 @@
     </div>
 
     <div class="row g-3">
-        <div class="col-md-6 col-xl-3 reveal" style="--i: 0">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 0">
             <a href="/admin/usuarios" class="accion vidrio" style="--c1: #2d6a4f; --c2: #52b788">
                 <span class="a-icono"><i class="bi bi-people"></i></span>
                 <div><strong>Gestionar Usuarios</strong><small>Editar o eliminar cuentas</small></div>
                 <i class="bi bi-arrow-right a-flecha"></i>
             </a>
         </div>
-        <div class="col-md-6 col-xl-3 reveal" style="--i: 1">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 1">
             <a href="/admin/pedidos" class="accion vidrio" style="--c1: #bc6c25; --c2: #e9a23b">
                 <span class="a-icono"><i class="bi bi-truck"></i></span>
                 <div><strong>Ver Pedidos / Domicilios</strong><small>Cambiar estados</small></div>
                 <i class="bi bi-arrow-right a-flecha"></i>
             </a>
         </div>
-        <div class="col-md-6 col-xl-3 reveal" style="--i: 2">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 2">
+            <a href="/admin/mensajes" class="accion vidrio" style="--c1: #128c7e; --c2: #25d366">
+                <span class="a-icono"><i class="bi bi-chat-dots"></i></span>
+                <div><strong>Mensajes de contacto</strong><small><%= mensajesSinLeer > 0 ? mensajesSinLeer + ' sin leer' : 'Todo al día' %></small></div>
+                <% if (mensajesSinLeer > 0) { %><span class="accion-badge"><%= mensajesSinLeer %></span><% } %>
+                <i class="bi bi-arrow-right a-flecha"></i>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 3">
             <a href="/" class="accion vidrio" style="--c1: #0c6a94; --c2: #4aa8d8">
                 <span class="a-icono"><i class="bi bi-shop"></i></span>
                 <div><strong>Ver tienda</strong><small>Volver al vivero</small></div>
                 <i class="bi bi-arrow-right a-flecha"></i>
             </a>
         </div>
-        <div class="col-md-6 col-xl-3 reveal" style="--i: 3">
+        <div class="col-md-6 col-xl-4 reveal" style="--i: 4">
             <a href="/logout" class="accion vidrio" style="--c1: #c9184a; --c2: #ff8fa3">
                 <span class="a-icono"><i class="bi bi-box-arrow-right"></i></span>
                 <div><strong>Cerrar sesión</strong><small>Salir del panel</small></div>

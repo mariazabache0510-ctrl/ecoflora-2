@@ -40,3 +40,16 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    y define la variable MONGODB_URI en el servicio.
    SESSION_SECRET se genera sola al desplegar el blueprint.
    El servidor escucha en 0.0.0.0 y el puerto PORT.
+
+6. CONTACTO POR CORREO Y WHATSAPP
+   Los datos de contacto (dirección, teléfono, WhatsApp y correo) están en
+   src/contacto.js.
+   Cada mensaje del formulario /contacto se guarda en MongoDB y se envía por
+   correo con Resend. Render gratis bloquea SMTP, por eso se usa su API web.
+   - Crea una cuenta en https://resend.com con el correo que recibirá los
+     mensajes y genera una API key.
+   - En Render (Environment) define RESEND_API_KEY con esa clave.
+   - CONTACT_TO_EMAIL (opcional) cambia el destinatario.
+   Con el remitente de prueba onboarding@resend.dev, Resend solo entrega al
+   correo con el que te registraste. Los mensajes también se leen en
+   /admin/mensajes aunque el correo falle.

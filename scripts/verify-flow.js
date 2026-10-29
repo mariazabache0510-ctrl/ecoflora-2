@@ -167,12 +167,46 @@ async function main() {
   const historial = await guest.request('GET', '/usuario/historial');
   assert(historial.text.includes('Catalogo') || historial.text.includes('catalogo') || historial.text.includes('Planta'), 'el historial guarda visitas');
 
+  // --- Contacto: datos reales, WhatsApp y formulario ---
+  const paginaContacto = await guest.request('GET', '/contacto');
+  assert(paginaContacto.status === 200, 'la página de contacto responde 200');
+  for (const dato of ['+57 312 469 8497', 'tel:+573124698497', 'mariazabache0510@gmail.com', 'mailto:mariazabache0510@gmail.com', 'Villavicencio-Meta']) {
+    assert(paginaContacto.text.includes(dato), 'contacto muestra ' + dato);
+  }
+  assert(paginaContacto.text.includes('https://wa.me/573124698497'), 'contacto enlaza al WhatsApp +57 3124698497');
+  assert(paginaContacto.text.includes('btn-whatsapp') && paginaContacto.text.includes('name="sitio_web"'), 'contacto tiene el botón de WhatsApp y la trampa anti-spam');
+  for (const viejo of ['Bogotá', '(601)', 'hola@ecoflora.com']) {
+    assert(!paginaContacto.text.includes(viejo), 'contacto ya no muestra ' + viejo);
+  }
+
+  for (const ruta of ['/', '/catalogo', '/nosotros']) {
+    const pagina = await guest.request('GET', ruta);
+    assert(
+      pagina.text.includes('Villavicencio-Meta') && pagina.text.includes('+57 312 469 8497')
+        && pagina.text.includes('mariazabache0510@gmail.com') && pagina.text.includes('https://wa.me/573124698497'),
+      'el footer de ' + ruta + ' tiene los datos reales y WhatsApp'
+    );
+    assert(!pagina.text.includes('Bogotá') && !pagina.text.includes('(601)') && !pagina.text.includes('hola@ecoflora.com'), 'el footer de ' + ruta + ' no conserva los datos antiguos');
+  }
+
+  const sinCampos = await guest.request('POST', '/contacto', { nombre: 'Ana', email: '', mensaje: '' });
+  assert(sinCampos.status === 400 && sinCampos.text.includes('Completa los campos obligatorios'), 'contacto exige los campos obligatorios');
+  const correoMalo = await guest.request('POST', '/contacto', { nombre: 'Ana', email: 'no-es-correo', mensaje: 'Hola' });
+  assert(correoMalo.status === 400 && correoMalo.text.includes('correo válido'), 'contacto rechaza un correo inválido');
+  assert(correoMalo.text.includes('value="Ana"'), 'contacto conserva lo escrito cuando hay error');
+
+  const marca = 'prueba-' + Date.now();
+  const trampa = await guest.request('POST', '/contacto', {
+    nombre: 'Robot', email: 'robot@spam.com', mensaje: 'compra ya ' + marca, sitio_web: 'http://spam.example'
+  });
+  assert(trampa.text.includes('Mensaje enviado correctamente'), 'el bot que llena la trampa recibe éxito aparente');
+
   const contacto = await guest.request('POST', '/contacto', {
     nombre: 'Ana',
     email: 'ana@correo.com',
-    telefono: '300',
+    telefono: '3124000000',
     asunto: 'Riego',
-    mensaje: '¿Cada cuánto riego el pothos?'
+    mensaje: '¿Cada cuánto riego el pothos? ' + marca
   });
   assert(contacto.text.includes('Mensaje enviado correctamente'), 'formulario de contacto');
 
@@ -186,6 +220,32 @@ async function main() {
   assert(panel.text.includes('Panel de Administración'), 'login de administrador');
   assert(panel.text.includes('>22<'), 'el panel cuenta las 22 plantas');
   assert(panel.text.includes('data-contar'), 'el panel usa los contadores animados');
+
+  assert(panel.text.includes('/admin/mensajes') && panel.text.includes('sin leer'), 'el panel enlaza a los mensajes y cuenta los nuevos');
+
+  const bandeja = await admin.request('GET', '/admin/mensajes');
+  assert(bandeja.status === 200 && bandeja.text.includes('Mensajes de contacto'), 'el admin abre la bandeja de mensajes');
+  const bloque = bandeja.text.split('<article').find((trozo) => trozo.includes(marca));
+  assert(bloque, 'el mensaje del formulario aparece en la bandeja');
+  assert(bloque.includes('ana@correo.com') && bloque.includes('3124000000') && bloque.includes('Riego'), 'la bandeja muestra los datos de quien escribió');
+  assert(bloque.includes('mailto:ana@correo.com?subject=Re%3A%20Riego'), 'la bandeja permite responder por correo');
+  assert(bloque.includes('https://wa.me/573124000000'), 'la bandeja permite responder por WhatsApp');
+  assert(bloque.includes('Correo no enviado') || bloque.includes('Correo enviado'), 'la bandeja indica si el correo salió');
+  assert(bloque.includes('Marcar como leído') && bloque.includes('estado-pendiente'), 'el mensaje nuevo se marca como no leído');
+  assert(!bandeja.text.split('<article').some((trozo) => trozo.includes('compra ya ' + marca)), 'el mensaje del bot no se guarda');
+  const idMensaje = bloque.match(/\/admin\/mensajes\/(\d+)\/leido/);
+  assert(idMensaje, 'el mensaje tiene id');
+
+  await follow(admin, 'POST', '/admin/mensajes/' + idMensaje[1] + '/leido', { leido: '1' });
+  const bandeja2 = await admin.request('GET', '/admin/mensajes');
+  const leido = bandeja2.text.split('<article').find((trozo) => trozo.includes(marca));
+  assert(leido && leido.includes('Marcar como no leído') && !leido.includes('estado-pendiente'), 'el admin marca el mensaje como leído');
+
+  await follow(admin, 'POST', '/admin/mensajes/' + idMensaje[1] + '/eliminar');
+  const bandeja3 = await admin.request('GET', '/admin/mensajes');
+  assert(!bandeja3.text.includes(marca), 'el admin elimina el mensaje');
+  const visitanteMensajes = await guest.request('GET', '/admin/mensajes');
+  assert(visitanteMensajes.status >= 300 || !visitanteMensajes.text.includes('Mensajes de contacto'), 'un visitante no entra a la bandeja de mensajes');
 
   const pedidos = await admin.request('GET', '/admin/pedidos');
   assert(pedidos.text.includes('Cliente Editado') && pedidos.text.includes('estado estado-pendiente'), 'el admin ve el pedido pendiente');

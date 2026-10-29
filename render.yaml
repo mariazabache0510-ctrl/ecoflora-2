@@ -13,3 +13,7 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CONTACT_TO_EMAIL
+        value: mariazabache0510@gmail.com
