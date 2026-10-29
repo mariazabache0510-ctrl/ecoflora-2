@@ -107,8 +107,25 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    Pruebas automatizadas (con una base LOCAL, nunca la de producción):
    - node scripts/verify-rostro-vida.js
    - node scripts/verify-face.js          (app encendida, misma clave)
-   - node scripts/verify-rostro-browser.js (Chrome con cámara simulada)
+   - node scripts/verify-rostro-browser.js (Chrome con cámara simulada;
+     incluye el escenario "lento": sin WebGL y con el procesador 4 veces
+     más lento, y muestra cuánto tarda cada etapa)
 
    Consejos de uso: buena luz de frente, sin gorra ni lentes oscuros;
    ábrelo en Chrome o Safari (no dentro de Instagram/WhatsApp); en el
    celular permite la cámara desde el candado de la dirección.
+
+   Rapidez: los modelos (unos 8 MB, se guardan en el navegador) se van
+   preparando mientras la persona acepta la autorización o al abrir la
+   pestaña Rostro de un navegador que ya entró con rostro. La cámara se
+   pide al mismo tiempo, la prueba de vida empieza apenas hay imagen y
+   cada muestra del rostro se toma en una sola pasada. En un equipo lento
+   (sin WebGL o con cada cuadro muy tardado) se dan más segundos (nunca
+   menos de unos 12 cuadros para el gesto), se usa un detector más
+   pequeño y, si tocaba parpadear, se pide girar la cabeza, porque un
+   parpadeo dura menos que un cuadro. Si se queda pegado: abre la consola del
+   navegador (F12, pestaña Console) y busca las líneas que empiezan con
+   [rostro]; dicen cuánto tardó cada etapa y si el equipo usa WebGL
+   (rápido) o el procesador (lento). Los tiempos y tamaños se ajustan en
+   la constante ETAPA de public/js/rostro.js y los umbrales de parpadeo y
+   giro en AJUSTES de public/js/rostro-vida.js.

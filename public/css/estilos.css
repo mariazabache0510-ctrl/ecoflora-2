@@ -883,7 +883,7 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 
 /* Cámara circular: anillo de progreso, línea de escaneo, malla sobre el rostro y animaciones de resultado */
 @property --progreso { syntax: '<number>'; inherits: true; initial-value: 0; }
-.rostro-camara { --progreso: 0; --rostro-color: #52b788; display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; transition: --progreso 0.45s var(--curva); }
+.rostro-camara { --progreso: 0; --rostro-color: #52b788; display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; transition: --progreso 0.22s linear; }
 .rostro-marco { position: relative; isolation: isolate; width: min(100%, 300px); aspect-ratio: 1; }
 /* Resplandor que respira detrás del círculo */
 .rostro-marco::after { content: ''; position: absolute; inset: -22px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(82, 183, 136, 0.34), rgba(82, 183, 136, 0) 68%); animation: rostro-respira 4.2s ease-in-out infinite; }
@@ -894,15 +894,15 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .rostro-marco::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 50%; opacity: 0; transition: opacity 0.4s; pointer-events: none;
     background: conic-gradient(from -90deg, #ffffff calc(var(--progreso) * 360deg), transparent 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9)); }
+}
 .rostro-circulo { position: absolute; inset: 14px; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #eaf8ee, #95d5b2 78%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75), 0 10px 30px rgba(27, 67, 50, 0.22); }
 .rostro-video, .rostro-malla { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .rostro-video { opacity: 0; transition: opacity 0.6s; }
-.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"], [data-estado="exito"], [data-estado="error"]) .rostro-video { opacity: 1; }
+.rostro-camara:is([data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"], [data-estado="exito"], [data-estado="error"]) .rostro-video { opacity: 1; }
 /* Línea de luz que recorre el rostro mientras se analiza */
-.rostro-escaneo { position: absolute; left: 0; right: 0; top: 0; height: 34%; opacity: 0; pointer-events: none; mix-blend-mode: screen;
+.rostro-escaneo { position: absolute; left: 0; right: 0; top: 0; height: 34%; opacity: 0; pointer-events: none; will-change: transform;
     background: linear-gradient(to bottom, rgba(183, 255, 214, 0) 0%, rgba(183, 255, 214, 0.5) 88%, rgba(236, 255, 244, 0.95) 98%, rgba(236, 255, 244, 0) 100%); }
-.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 1; animation: rostro-barrido 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+.rostro-camara:is([data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 1; animation: rostro-barrido 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 /* Estado de reposo: ícono flotando */
 .rostro-reposo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1.2rem; text-align: center; color: var(--verde-medio); font-weight: 600; font-size: 0.9rem; transition: opacity 0.4s; }
 .rostro-reposo i { font-size: 3.4rem; opacity: 0.85; animation: rostro-flota 3.4s ease-in-out infinite; }
@@ -912,9 +912,13 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="verificando"]) .rostro-circulo::after { opacity: 1; }
 .rostro-camara[data-estado="verificando"] .rostro-circulo::after { border-color: rgba(255, 255, 255, 0.4); border-top-color: #fff; }
 /* Anillo según el estado */
-.rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"]) .rostro-anillo { opacity: 1; animation: girar-lento 7s linear infinite; }
+.rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"]) .rostro-anillo { opacity: 1; animation: girar-lento 7s linear infinite; }
 .rostro-camara:is([data-estado="cargando"], [data-estado="camara"], [data-estado="verificando"]) .rostro-anillo { animation-duration: 2.4s; }
-.rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-marco::before { opacity: 1; }
+.rostro-camara:is([data-estado="reto"], [data-estado="capturando"]) .rostro-marco::before { opacity: 1; }
+/* Mientras se analiza el rostro el equipo debe dedicarse a eso: se quita el resplandor que respira. El fondo del
+   jardín (hojas, mariposas, brillos) se pausa desde rostro.js con la clase rostro-pausa. */
+.rostro-camara:is([data-estado="reto"], [data-estado="capturando"]) .rostro-marco::after { animation: none; opacity: 0.85; }
+.jardin.rostro-pausa, .jardin.rostro-pausa * { animation-play-state: paused !important; }
 .rostro-camara[data-estado="exito"] .rostro-anillo { opacity: 1; background: conic-gradient(#2fbf71, #95d5b2, #2fbf71); filter: drop-shadow(0 0 10px rgba(47, 191, 113, 0.8)); animation: rostro-destello 1.6s ease-out 1; }
 .rostro-camara[data-estado="error"] .rostro-anillo { opacity: 1; background: conic-gradient(#e5738f, #f4b6c4, #e5738f); filter: drop-shadow(0 0 8px rgba(229, 115, 143, 0.6)); }
 .rostro-camara[data-estado="error"] .rostro-marco { animation: rostro-sacude 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1; }
@@ -1004,7 +1008,7 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
     /* Sin movimiento: la rueda de carga queda como un arco quieto y el resultado aparece ya terminado. */
     .rostro-camara { transition: none; }
     .rostro-escaneo, .rostro-marco::after { animation: none !important; }
-    .rostro-camara:is([data-estado="alineando"], [data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 0.35; transform: translateY(80%); }
+    .rostro-camara:is([data-estado="reto"], [data-estado="capturando"]) .rostro-escaneo { opacity: 0.35; transform: translateY(80%); }
     .rf-tallo { stroke-dashoffset: 0; }
     .rf-hoja, .rf-petalos, .rf-centro { transform: none; }
     .rf-petalo { opacity: 1; }

@@ -13,6 +13,8 @@
 // Uso (con la app y MongoDB LOCALES de prueba encendidos, con FACE_ENCRYPTION_KEY puesta):
 //   node scripts/verify-rostro-browser.js
 // Variables opcionales: BASE_URL, CHROME_PATH, SHOTS_DIR, ESCENARIOS (ej. "exito,bloqueada").
+// El escenario "lento" simula un equipo flojo (sin WebGL y con el procesador limitado a 1/RALENTIZAR);
+// por defecto RALENTIZAR=4. Los escenarios "exito" y "lento" imprimen cuánto tarda cada etapa.
 
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
@@ -24,7 +26,8 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const salida = process.env.SHOTS_DIR || path.join(os.tmpdir(), 'ecoflora-rostro');
 const trabajo = path.join(os.tmpdir(), 'ecoflora-rostro-camara');
 const muestras = path.join(__dirname, '..', 'node_modules', '@vladmandic', 'face-api', 'demo', 'sample1.jpg');
-const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro,login_ok,login_otra_persona,login_sin_rostro').split(',');
+const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro,login_ok,login_otra_persona,login_sin_rostro,lento').split(',');
+const RALENTIZAR = Number(process.env.RALENTIZAR || 4);
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
 let navegadores = [];
@@ -39,7 +42,7 @@ function cerrarTodo(codigo) {
   navegadores.forEach((n) => n.cerrar());
   process.exit(codigo);
 }
-setTimeout(() => { console.error('TIEMPO AGOTADO'); cerrarTodo(2); }, 420000);
+setTimeout(() => { console.error('TIEMPO AGOTADO'); cerrarTodo(2); }, 600000);
 
 // ---------- Cámara simulada: recorta una cara y la repite como video ----------
 
@@ -65,7 +68,7 @@ function prepararCamara(persona) {
 // ---------- Un Chrome controlado por el protocolo DevTools ----------
 
 let siguientePuerto = 9420;
-async function crearNavegador(nombre, { camara, bloquear } = {}) {
+async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar } = {}) {
   const puerto = siguientePuerto++;
   const args = ['--headless=new', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
     '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', `--remote-debugging-port=${puerto}`,
@@ -82,7 +85,7 @@ async function crearNavegador(nombre, { camara, bloquear } = {}) {
   let contador = 0;
   const pendientes = new Map();
   const problemas = [];
-  const n = { nombre, problemas, contexto: 'inicio' };
+  const n = { nombre, problemas, contexto: 'inicio', registro: [] };
 
   n.cerrar = () => {
     try { if (ws) ws.close(); } catch (error) { /* ya cerrado */ }
@@ -118,6 +121,8 @@ async function crearNavegador(nombre, { camara, bloquear } = {}) {
     if (m.method === 'Runtime.exceptionThrown') {
       const d = m.params.exceptionDetails;
       problemas.push(`[${n.contexto}] excepción JS: ${(d.exception && d.exception.description) || d.text}`);
+    } else if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'debug' && String(m.params.args[0] && m.params.args[0].value).startsWith('[rostro]')) {
+      n.registro.push(m.params.args.map((a) => a.value).join(' '));
     } else if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
       problemas.push(`[${n.contexto}] console.error: ${m.params.args.map((a) => a.value || a.description).join(' ')}`);
     } else if (m.method === 'Network.responseReceived' && m.params.response.status >= 400 && !n.esperados.some((e) => m.params.response.url.includes(e))) {
@@ -128,6 +133,15 @@ async function crearNavegador(nombre, { camara, bloquear } = {}) {
   await n.enviar('Page.enable');
   await n.enviar('Runtime.enable');
   await n.enviar('Network.enable');
+  if (ralentizar) await n.enviar('Emulation.setCPUThrottlingRate', { rate: ralentizar });
+  if (sinWebgl) {
+    // Un equipo sin WebGL: los lienzos se niegan a dar un contexto 3D y la librería tiene que usar el procesador.
+    await n.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (tipo, ...resto) { return /webgl/i.test(String(tipo)) ? null : original.call(this, tipo, ...resto); };
+      if (window.OffscreenCanvas) { const o = OffscreenCanvas.prototype.getContext; OffscreenCanvas.prototype.getContext = function (tipo, ...resto) { return /webgl/i.test(String(tipo)) ? null : o.call(this, tipo, ...resto); }; }
+    })()` });
+  }
 
   n.evaluar = async (expresion) => {
     const r = await n.enviar('Runtime.evaluate', { expression: expresion, returnByValue: true, awaitPromise: true });
@@ -205,7 +219,13 @@ async function pasarAutorizacion(n) {
   verifica((await n.evaluar(`document.querySelector('[data-rostro-continuar]').disabled`)) === true, 'el botón Continuar empieza deshabilitado');
   await n.clic('[data-rostro-consentimiento]');
   await n.escribir('[data-rostro-clave]', 'clave12345');
-  verifica((await n.evaluar(`document.querySelector('[data-rostro-continuar]').disabled`)) === false, 'con el consentimiento y la contraseña se habilita Continuar');
+  // La página puede estar ocupada preparando los modelos en segundo plano: se le da unos segundos para reaccionar.
+  const habilitado = await n.esperar(`document.querySelector('[data-rostro-continuar]').disabled === false`, 8000, 'habilitar Continuar').catch(() => false);
+  if (habilitado !== true) {
+    console.log('      estado del formulario: ' + (await n.evaluar(`JSON.stringify({ ruta: location.pathname, consentimiento: document.querySelector('[data-rostro-consentimiento]').checked, largoClave: document.querySelector('[data-rostro-clave]').value.length, deshabilitado: document.querySelector('[data-rostro-continuar]').disabled, listo: document.readyState, consola: window.__consola || null })`)));
+    console.log('      consola: ' + n.registro.join(' || '));
+  }
+  verifica(habilitado === true, 'con el consentimiento y la contraseña se habilita Continuar');
   await n.clic('[data-rostro-continuar]');
   await n.esperar(`!document.querySelector('[data-rostro-paso-camara]').hidden`, 8000, 'el paso de la cámara');
   verifica(true, 'el servidor aceptó la autorización y aparece la cámara');
@@ -214,15 +234,19 @@ async function pasarAutorizacion(n) {
 // Cuenta los cambios de estado de la cámara para entender qué ocurrió.
 async function vigilarEstados(n) {
   await n.evaluar(`(() => {
-    window.__estados = []; window.__pistas = [];
+    window.__estados = []; window.__pistas = []; window.__horas = [];
     const c = document.querySelector('[data-rostro-camara]');
-    new MutationObserver(() => window.__estados.push(c.getAttribute('data-estado'))).observe(c, { attributes: true, attributeFilter: ['data-estado'] });
+    window.__horas.push(['inicio', performance.now()]);
+    new MutationObserver(() => { const e = c.getAttribute('data-estado'); window.__estados.push(e); window.__horas.push([e, performance.now()]); }).observe(c, { attributes: true, attributeFilter: ['data-estado'] });
     const i = c.querySelector('[data-rostro-instruccion]');
     new MutationObserver(() => { const t = i.textContent; if (!window.__pistas.includes(t)) window.__pistas.push(t); }).observe(i, { childList: true, characterData: true, subtree: true });
   })()`);
 }
 const pistas = (n) => n.evaluar('window.__pistas.join(" | ")');
 const estados = (n) => n.evaluar('window.__estados.join(" > ")');
+// "inicio -> cargando 0.1s | cargando -> reto 3.2s | ..." : lo que tardó cada etapa, en segundos.
+const tramos = (n) => n.evaluar(`window.__horas.map((h, i, a) => i ? a[i - 1][0] + ' ' + ((h[1] - a[i - 1][1]) / 1000).toFixed(1) + 's' : null).filter(Boolean).join(' | ')`);
+const total = (n) => n.evaluar('Number(((window.__horas[window.__horas.length - 1][1] - window.__horas[0][1]) / 1000).toFixed(1))');
 
 // ---------- Escenarios ----------
 
@@ -245,14 +269,10 @@ async function escenarioExito() {
   await n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / 25), completado: c >= 25 }; } }; }`);
   await vigilarEstados(n);
   await n.clic('[data-rostro-iniciar]');
-  await n.esperar(`['cargando', 'camara', 'alineando'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 5000, 'estado cargando');
+  await n.esperar(`['cargando', 'camara', 'reto'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 5000, 'estado cargando');
   await n.foto('3-cargando-escritorio');
-  await n.esperar(`['alineando', 'reto'].includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, 90000, 'la cámara y los modelos');
-  verifica(true, 'los modelos de reconocimiento cargan y la cámara se enciende');
-  await dormir(1500);
-  await n.foto('4-alineando-escritorio');
-  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'reto'`, 60000, 'que el rostro quede alineado');
-  verifica(true, 'se detecta el rostro, pasa los controles de calidad y se pide el reto');
+  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'reto'`, 90000, 'la cámara y los modelos');
+  verifica(true, 'los modelos de reconocimiento cargan, la cámara se enciende y empieza la prueba de vida');
   await dormir(500);
   await n.foto('5-reto-escritorio');
   await dormir(1200);
@@ -267,14 +287,25 @@ async function escenarioExito() {
     console.log('      instrucción: ' + (await texto(n, '[data-rostro-instruccion]')));
   }
   verifica((await estado(n)) === 'exito', 'el registro termina en éxito');
+  // Se anota todo de inmediato: unos segundos después la página se redirige y esos datos se pierden.
   const traza = await estados(n);
+  const etapas = await tramos(n);
+  const totalSegundos = await total(n);
+  const consola = n.registro.slice();
+  const tieneExtractFaces = await n.evaluar('Boolean(window.faceapi && typeof window.faceapi.extractFaces === "function")');
   await dormir(400);
   await n.foto('6-exito-escritorio-a');
   await dormir(1900);
   await n.foto('6-exito-escritorio-b');
   verifica(true, 'se capturan los descriptores y el servidor los guarda');
   console.log('      estados: ' + traza);
-  verifica(/capturando > verificando > exito$/.test(traza), 'el flujo pasa por cargar, alinear, reto, capturar, verificar y éxito');
+  verifica(/capturando > verificando > exito$/.test(traza), 'el flujo pasa por cargar, reto, capturar, verificar y éxito');
+  verifica(!/alineando/.test(traza), 'ya no hay una etapa de alineación aparte');
+  console.log('      etapas: ' + etapas);
+  console.log('      total de "Encender cámara" al éxito: ' + totalSegundos + ' s');
+  console.log('      consola: ' + consola.join(' || '));
+  verifica(tieneExtractFaces === true, 'face-api ofrece extractFaces (la captura reutiliza la detección)');
+  verifica(totalSegundos < 20, 'de "Encender cámara" al éxito pasan menos de 20 s (' + totalSegundos + ' s con la prueba de vida simulada)');
   await n.esperar(`location.pathname === '/rostro' && location.search.includes('activado=1')`, 10000, 'la redirección');
   await dormir(800);
   verifica((await n.evaluar(`document.body.innerText.includes('Activado desde')`)) === true, 'después queda activado en /rostro');
@@ -314,7 +345,7 @@ async function escenarioFotoFija() {
   await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'reto'`, 120000, 'llegar al reto');
   await dormir(2000);
   await n.foto('10-foto-fija-reto');
-  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'error'`, 60000, 'el error por tiempo');
+  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'error'`, 90000, 'el error por tiempo');
   const mensaje = await texto(n, '[data-rostro-mensaje]');
   console.log('      estados: ' + (await estados(n)));
   verifica(/se acabó el tiempo/i.test(mensaje), 'una foto fija termina con "Se acabó el tiempo" (no pasa la prueba de vida)');
@@ -358,7 +389,7 @@ async function escenarioSinRostro() {
   await n.ir('/rostro');
   await pasarAutorizacion(n);
   await n.clic('[data-rostro-iniciar]');
-  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'alineando'`, 90000, 'la cámara');
+  await n.esperar(`document.querySelector('[data-rostro-camara]').getAttribute('data-estado') === 'reto'`, 90000, 'la cámara');
   await n.esperar(`document.querySelector('[data-rostro-instruccion]').textContent.includes('No vemos tu rostro')`, 20000, 'el mensaje de que no hay rostro');
   verifica(true, 'sin rostro a la vista se pide ponerse frente a la cámara');
   await n.foto('13-sin-rostro');
@@ -370,7 +401,8 @@ async function escenarioSinRostro() {
 }
 
 // Sustituye la prueba de vida por una que se cumple sola (una foto no parpadea).
-const reemplazarReto = (n) => n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / 25), completado: c >= 25 }; } }; }`);
+// Simula una persona que completa el gesto después de `cuadros` cuadros (un equipo lento ve muchos menos por segundo).
+const reemplazarReto = (n, cuadros = 25) => n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / ${cuadros}), completado: c >= ${cuadros} }; } }; }`);
 const esperarEstado = (n, lista, ms, que) => n.esperar(`${JSON.stringify(lista)}.includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, ms, que);
 
 async function escenarioLoginOk() {
@@ -388,7 +420,9 @@ async function escenarioLoginOk() {
   verifica((await n.evaluar(`document.querySelector('[data-login-panel="clave"]').hidden && !document.querySelector('[data-login-panel="rostro"]').hidden`)) === true, 'la pestaña Rostro cambia el panel');
   await n.foto('21-login-rostro-escritorio');
   await n.clic('[data-login-rostro-iniciar]');
-  verifica((await n.evaluar(`document.querySelector('[data-rostro-usuario]').classList.contains('is-invalid')`)) === true, 'sin usuario se marca el campo y no se enciende la cámara');
+  const marcado = await n.esperar(`document.querySelector('[data-rostro-usuario]').classList.contains('is-invalid')`, 4000, 'marcar el campo').catch(() => false);
+  if (marcado !== true) console.log('      campo: ' + (await n.evaluar(`document.querySelector('[data-rostro-usuario]').className + ' | estado ' + document.querySelector('[data-rostro-camara]').getAttribute('data-estado') + ' | botón: ' + document.querySelector('[data-login-rostro-iniciar]').outerHTML.slice(0, 120)`)));
+  verifica(marcado === true, 'sin usuario se marca el campo y no se enciende la cámara');
   await n.escribir('[data-rostro-usuario]', u);
   await reemplazarReto(n);
   await vigilarEstados(n);
@@ -470,9 +504,43 @@ async function escenarioLoginSinRostro() {
   return n;
 }
 
+async function escenarioLento() {
+  console.log(`\n== Equipo lento: sin WebGL y con el procesador ${RALENTIZAR} veces más lento ==`);
+  const n = await crearNavegador('lento', { camara: prepararCamara('a'), sinWebgl: true, ralentizar: RALENTIZAR });
+  const u = `nav_l_${Date.now() % 1000000}`;
+  await crearUsuario(u);
+  await n.vista(1280, 900, false);
+  await entrar(n, u);
+  await n.ir('/rostro');
+  await pasarAutorizacion(n);
+  await reemplazarReto(n, 8);
+  await vigilarEstados(n);
+  await n.clic('[data-rostro-iniciar]');
+  await esperarEstado(n, ['reto', 'exito', 'error'], 240000, 'llegar al reto');
+  await dormir(1500);
+  await n.foto('30-lento-reto-escritorio');
+  await esperarEstado(n, ['exito', 'error'], 240000, 'el resultado');
+  const etapas = await tramos(n);
+  const totalSegundos = await total(n);
+  const final = await estado(n);
+  console.log('      etapas: ' + etapas);
+  console.log('      consola: ' + n.registro.join(' || '));
+  if (final !== 'exito') {
+    console.log('      mensaje: ' + (await texto(n, '[data-rostro-mensaje]')));
+    console.log('      pistas vistas: ' + (await pistas(n)));
+  }
+  verifica(final === 'exito', 'aun sin WebGL y con el procesador limitado, el registro termina bien (' + totalSegundos + ' s)');
+  verifica(n.registro.some((l) => /motor cpu/.test(l)), 'el navegador usó el procesador (cpu) como respaldo');
+  verifica(n.registro.some((l) => /dispositivo lento/.test(l)), 'se activó el modo para dispositivos lentos');
+  await dormir(500);
+  await n.foto('31-lento-exito-escritorio');
+  n.cerrar();
+  return n;
+}
+
 async function main() {
   fs.mkdirSync(salida, { recursive: true });
-  const escenarios = { exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro, login_ok: escenarioLoginOk, login_otra_persona: escenarioLoginOtraPersona, login_sin_rostro: escenarioLoginSinRostro };
+  const escenarios = { lento: escenarioLento, exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro, login_ok: escenarioLoginOk, login_otra_persona: escenarioLoginOtraPersona, login_sin_rostro: escenarioLoginSinRostro };
   for (const nombre of quieren) {
     if (!escenarios[nombre]) continue;
     const n = await escenarios[nombre]();
