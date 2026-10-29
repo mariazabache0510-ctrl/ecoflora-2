@@ -249,6 +249,11 @@ async function main() {
 
   const pedidos = await admin.request('GET', '/admin/pedidos');
   assert(pedidos.text.includes('Cliente Editado') && pedidos.text.includes('estado estado-pendiente'), 'el admin ve el pedido pendiente');
+  assert(
+    pedidos.text.includes('fila-detalle') && pedidos.text.includes('Calle 45 #12-30') && pedidos.text.includes('Portería')
+      && pedidos.text.includes('tel:3010000000') && pedidos.text.includes('1 × Monstera deliciosa'),
+    'el admin ve dirección, teléfono, notas y plantas de cada domicilio'
+  );
   const idMatch = pedidos.text.match(/name="id_pedido" value="(\d+)"/);
   assert(idMatch, 'el pedido tiene id');
   assert(pedidos.text.includes('data-icono="bi-truck"') && pedidos.text.includes('data-tono="indigo"') && pedidos.text.includes('>En camino<'), 'el menú de estados trae iconos, colores y nombres legibles');

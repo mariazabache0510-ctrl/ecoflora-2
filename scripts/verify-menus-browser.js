@@ -229,7 +229,7 @@ async function main() {
   verifica(envio.includes('entregado'), `el formulario envía el estado elegido (${envio})`);
   const enviarBtn = await centro('form[action="/admin/pedidos"] button[type=submit]');
   await clic(enviarBtn.x, enviarBtn.y); await dormir(2500);
-  const fila = await evaluar(`(() => { const tr = [...document.querySelectorAll('tbody tr')].find((t) => t.querySelector('input[name=id_pedido]').value === '${idPrimero}'); return tr ? tr.querySelector('.estado').textContent.trim() : 'sin fila'; })()`);
+  const fila = await evaluar(`(() => { const tr = [...document.querySelectorAll('tbody tr.fila-pedido')].find((t) => t.querySelector('input[name=id_pedido]').value === '${idPrimero}'); return tr ? tr.querySelector('.estado').textContent.trim() : 'sin fila'; })()`);
   verifica(/entregado/i.test(fila), `el servidor guardó el estado nuevo (${fila})`);
 
   // Último menú de la tabla: debe abrir hacia arriba si abajo no cabe

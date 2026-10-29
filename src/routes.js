@@ -3,7 +3,7 @@ const { hashPassword, verifyPassword } = require('./passwords');
 const { getCartItems, addItem, updateQuantities, removeItem, mergeGuestCart } = require('./cart');
 const { placeOrder, StockError } = require('./orders');
 const { escapeRegex, ESTADOS } = require('./helpers');
-const { enviarMensajeContacto } = require('./mailer');
+const { enviarMensajeContacto, enviarAvisoDomicilio } = require('./mailer');
 const { crearLimitador } = require('./limite');
 
 // Como máximo 5 mensajes por IP cada 10 minutos en el formulario de contacto.
@@ -302,7 +302,8 @@ function registerRoutes(app) {
           error: 'La dirección y teléfono son obligatorios.'
         });
       }
-      await placeOrder(req.session.id_usuario, items, { direccion, ciudad, telefono, notas });
+      const pedido = await placeOrder(req.session.id_usuario, items, { direccion, ciudad, telefono, notas });
+      avisarDomicilio(pedido, req.session.id_usuario);
       const destino = req.session.rol === 'cliente' ? '/usuario/domicilios?exito=1' : '/admin/pedidos';
       return res.redirect(destino);
     } catch (error) {
@@ -539,6 +540,24 @@ function registerRoutes(app) {
       next(error);
     }
   });
+}
+
+// Avisa por correo al administrador que un cliente pidió un domicilio. Va por detrás: el cliente no espera
+// al correo, y si falla el pedido ya quedó guardado y se ve en /admin/pedidos con la marca "Aviso no enviado".
+function avisarDomicilio(pedido, idUsuario) {
+  (async () => {
+    try {
+      const cliente = await Usuario.findOne({ id_usuario: idUsuario }).lean();
+      const resultado = await enviarAvisoDomicilio(pedido.toObject ? pedido.toObject() : pedido, cliente || {});
+      if (!resultado.enviado) console.error(`No se pudo enviar el aviso del domicilio #${pedido.id_pedido}:`, resultado.motivo);
+      await Pedido.updateOne(
+        { id_pedido: pedido.id_pedido },
+        { $set: { aviso_enviado: resultado.enviado, error_aviso: resultado.enviado ? '' : String(resultado.motivo || '').slice(0, 300) } }
+      );
+    } catch (error) {
+      console.error(`Error al avisar del domicilio #${pedido && pedido.id_pedido}:`, error);
+    }
+  })();
 }
 
 async function pedidosConCliente() {

@@ -30,10 +30,22 @@
             <table class="table tabla-eco align-middle">
                 <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acción</th></tr></thead>
                 <tbody>
-                    <% pedidos.forEach(function(pedido, i) { %>
-                    <tr style="--i: <%= i %>">
+                    <% pedidos.forEach(function(pedido, i) {
+                        const lugar = [pedido.direccion_envio, pedido.ciudad_envio].filter(Boolean).join(', ');
+                        const telefono = String(pedido.telefono_contacto || '').trim();
+                        const wa = whatsappDe(telefono, 'Hola ' + pedido.cliente + ', recibimos tu pedido #' + pedido.id_pedido + ' en EcoFlora.');
+                        const plantas = (pedido.detalle || []).map(function(linea) { return linea.cantidad + ' × ' + linea.nombre; }).join(', ');
+                    %>
+                    <tr class="fila-pedido" style="--i: <%= i %>">
                         <td><strong><%= pedido.id_pedido %></strong></td>
-                        <td><%= pedido.cliente %><br><small class="text-muted"><%= pedido.email %></small></td>
+                        <td>
+                            <%= pedido.cliente %><br><small class="text-muted"><%= pedido.email %></small>
+                            <% if (pedido.aviso_enviado === true) { %>
+                            <br><small class="aviso aviso-ok" title="El aviso de este domicilio llegó a tu correo"><i class="bi bi-envelope-check"></i>Aviso enviado</small>
+                            <% } else if (pedido.aviso_enviado === false) { %>
+                            <br><small class="aviso aviso-falla" title="<%= pedido.error_aviso || 'No se pudo enviar el aviso por correo' %>"><i class="bi bi-envelope-exclamation"></i>Aviso no enviado</small>
+                            <% } %>
+                        </td>
                         <td><strong>$<%= formatPrice(pedido.total) %></strong></td>
                         <td><span class="estado estado-<%= pedido.estado %>"><%= String(pedido.estado).replace('_', ' ') %></span></td>
                         <td><%= formatDate(pedido.fecha_pedido) %></td>
@@ -47,6 +59,17 @@
                                 </select>
                                 <button type="submit" name="cambiar_estado" class="btn btn-sm btn-ecoflora">Actualizar</button>
                             </form>
+                        </td>
+                    </tr>
+                    <tr class="fila-detalle" style="--i: <%= i %>">
+                        <td></td>
+                        <td colspan="5">
+                            <div class="entrega">
+                                <span class="entrega-dato"><i class="bi bi-geo-alt"></i><%= lugar || 'Sin dirección' %></span>
+                                <span class="entrega-dato"><i class="bi bi-telephone"></i><% if (telefono) { %><a href="tel:<%= telefono.replace(/[^\d+]/g, '') %>"><%= telefono %></a><% } else { %>Sin teléfono<% } %><% if (wa) { %><a href="<%= wa %>" class="entrega-wa" target="_blank" rel="noopener noreferrer" title="Escribirle por WhatsApp"><i class="bi bi-whatsapp"></i></a><% } %></span>
+                                <% if (pedido.notas) { %><span class="entrega-dato entrega-notas"><i class="bi bi-chat-left-text"></i><%= pedido.notas %></span><% } %>
+                                <span class="entrega-dato entrega-plantas"><i class="bi bi-basket"></i><%= plantas || 'Sin detalle' %></span>
+                            </div>
                         </td>
                     </tr>
                     <% }) %>

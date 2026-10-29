@@ -34,12 +34,25 @@ function ucfirst(value) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+// Las fechas se muestran siempre en hora de Colombia, aunque el servidor (Render) trabaje en UTC.
+const FORMATO_FECHA = new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23'
+});
+
 function formatDate(value, withSeconds) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  const base = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  return withSeconds ? `${base}:${pad(date.getSeconds())}` : base;
+  const partes = {};
+  FORMATO_FECHA.formatToParts(date).forEach((parte) => { partes[parte.type] = parte.value; });
+  const base = `${partes.day}/${partes.month}/${partes.year} ${partes.hour}:${partes.minute}`;
+  return withSeconds ? `${base}:${partes.second}` : base;
 }
 
 const DEFAULT_IMAGE = '/img/plantas/_default.svg';

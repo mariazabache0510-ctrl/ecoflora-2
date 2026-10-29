@@ -149,7 +149,73 @@ async function main() {
     assert(sexto.status === 429 && sexto.text.includes('varios mensajes seguidos'), 'el sexto mensaje seguido se frena con 429');
     assert(recibidos.length === 5, 'el mensaje frenado no llegó a la API de correo');
 
-    // 5) Limpieza: borra los mensajes de prueba de la base.
+    // 5) Domicilio: cuando un cliente pide un domicilio, te llega un correo con todos sus datos.
+    const esperarLlamadas = async (cantidad) => {
+      for (let i = 0; i < 40 && recibidos.length < cantidad; i += 1) await new Promise((listo) => setTimeout(listo, 100));
+    };
+    const usuarioPrueba = 'cli' + Date.now().toString(36);
+    const correoCliente = `${usuarioPrueba}@correo.com`;
+    const comprador = cliente();
+    await comprador('POST', '/registro', {
+      nombre: 'Sofía <i>Ramírez</i>', usuario: usuarioPrueba, email: correoCliente, telefono: '3010000000',
+      direccion: 'Carrera 1', ciudad: 'Villavicencio', password: 'clave123', confirmar: 'clave123'
+    });
+    const entrada = await comprador('POST', '/login', { usuario: usuarioPrueba, password: 'clave123' });
+    assert(entrada.status === 302, 'el cliente de prueba inicia sesión');
+
+    responder = () => ({ status: 200, cuerpo: '{}' });
+    const antes = recibidos.length;
+    await comprador('POST', '/carrito', { accion: 'agregar', id_planta: '1', cantidad: '2' });
+    const pedido = await comprador('POST', '/confirmar-pedido', {
+      direccion: 'Calle 10 <b>#5-20</b>', ciudad: 'Villavicencio', telefono: '312 400 1111', notas: 'Dejar con el portero\nTimbre dañado ' + marca
+    });
+    assert(pedido.status === 302 && /exito=1/.test(pedido.location || ''), 'el cliente ve su pedido confirmado sin esperar el correo');
+    await esperarLlamadas(antes + 1);
+    assert(recibidos.length === antes + 1, 'al pedir un domicilio se envía un correo de aviso');
+    const aviso = recibidos[recibidos.length - 1];
+    const dom = aviso.json;
+    assert(aviso.auth === 'Bearer llave-de-prueba', 'el aviso usa la llave de Resend');
+    assert(dom.to.length === 1 && dom.to[0] === 'mariazabache0510@gmail.com', 'el aviso del domicilio llega a mariazabache0510@gmail.com');
+    assert(dom.reply_to === correoCliente, 'al responder el aviso le escribes al cliente');
+    const idPedido = (dom.subject.match(/domicilio #(\d+)/) || [])[1];
+    assert(idPedido && dom.subject.includes('Sofía') && dom.subject.includes('$170.000') && !/[\r\n]/.test(dom.subject), 'el asunto trae número de pedido, cliente y total');
+    for (const dato of ['Calle 10 <b>#5-20</b>', 'Villavicencio', '312 400 1111', 'Dejar con el portero', 'Timbre dañado', 'Monstera deliciosa', '2 x', correoCliente, usuarioPrueba, 'TOTAL: $170.000']) {
+      assert(dom.text.includes(dato), `el texto del aviso incluye "${dato}"`);
+    }
+    assert(dom.html.includes('&lt;b&gt;#5-20&lt;/b&gt;') && !dom.html.includes('<b>#5-20'), 'el HTML del aviso escapa la dirección');
+    assert(dom.html.includes('&lt;i&gt;Ram') && !dom.html.includes('<i>Ram'), 'el HTML del aviso escapa el nombre');
+    assert(dom.html.includes('https://wa.me/573124001111'), 'el aviso incluye el botón de WhatsApp al teléfono del pedido');
+    assert(dom.html.includes('$170.000') && dom.html.includes('Monstera deliciosa'), 'el aviso lista las plantas y el total');
+
+    // El panel de pedidos muestra el aviso como enviado y los datos de entrega.
+    let panelPedidos = '';
+    for (let i = 0; i < 30; i += 1) {
+      panelPedidos = (await admin('GET', '/admin/pedidos')).text;
+      if (panelPedidos.includes('Aviso enviado')) break;
+      await new Promise((listo) => setTimeout(listo, 100));
+    }
+    const filaDetalle = panelPedidos.split('<tr class="fila-pedido"').find((t) => t.includes(`name="id_pedido" value="${idPedido}"`)) || '';
+    assert(filaDetalle.includes('Aviso enviado'), 'el panel marca el aviso del domicilio como enviado');
+    assert(filaDetalle.includes('Calle 10 &lt;b&gt;#5-20&lt;/b&gt;') && filaDetalle.includes('Dejar con el portero') && filaDetalle.includes('2 × Monstera deliciosa'), 'el panel muestra dirección, notas y plantas');
+    assert(filaDetalle.includes('https://wa.me/573124001111'), 'el panel permite escribirle al cliente por WhatsApp');
+
+    // Si Resend falla, el pedido igual se hace y el panel avisa que el correo no salió.
+    responder = () => ({ status: 500, cuerpo: '{"message":"boom"}' });
+    await comprador('POST', '/carrito', { accion: 'agregar', id_planta: '1', cantidad: '1' });
+    const fallido = await comprador('POST', '/confirmar-pedido', { direccion: 'Calle 99', ciudad: 'Acacías', telefono: '3125550000', notas: '' });
+    assert(fallido.status === 302 && /exito=1/.test(fallido.location || ''), 'si falla el correo, el cliente igual ve su pedido confirmado');
+    await esperarLlamadas(antes + 2);
+    let panel2 = '';
+    for (let i = 0; i < 30; i += 1) {
+      panel2 = (await admin('GET', '/admin/pedidos')).text;
+      if (panel2.includes('Aviso no enviado')) break;
+      await new Promise((listo) => setTimeout(listo, 100));
+    }
+    assert(panel2.includes('Aviso no enviado') && panel2.includes('Resend respondió 500'), 'el panel marca "Aviso no enviado" con el motivo');
+    assert(panel2.includes('Calle 99'), 'el pedido con aviso fallido sigue visible con su dirección');
+    responder = () => ({ status: 200, cuerpo: '{}' });
+
+    // 6) Limpieza: borra los mensajes de prueba de la base.
     const lista = await admin('GET', '/admin/mensajes');
     const ids = lista.text.split('<article').filter((t) => t.includes(marca)).map((t) => (t.match(/\/admin\/mensajes\/(\d+)\/eliminar/) || [])[1]).filter(Boolean);
     for (const id of ids) await admin('POST', `/admin/mensajes/${id}/eliminar`);

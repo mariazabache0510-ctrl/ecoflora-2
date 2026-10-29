@@ -679,6 +679,22 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 .tabla-eco td:last-child:not(:has(form)) { white-space: nowrap; }
 .tabla-eco tbody tr { animation: entra-fila 0.55s var(--curva) both; animation-delay: calc(var(--i, 0) * 45ms); transition: background 0.25s; }
 .tabla-eco tbody tr:hover { background: rgba(216, 243, 220, 0.55); }
+/* Pedidos del admin: cada pedido lleva una segunda fila con los datos de entrega */
+.tabla-eco tr.fila-pedido td { border-bottom: 0; padding-bottom: 0.45rem; }
+.tabla-eco tr.fila-detalle td { padding-top: 0; padding-bottom: 1rem; white-space: normal !important; }
+.entrega { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; padding: 0.6rem 0.9rem; border-radius: var(--radio-sm); border-left: 4px solid var(--tierra); background: rgba(248, 232, 212, 0.55); font-size: 0.86rem; color: #5a4a35; }
+.entrega-dato { display: inline-flex; align-items: baseline; gap: 0.45rem; overflow-wrap: anywhere; }
+.entrega-dato > i { color: var(--tierra); }
+.entrega-dato a { color: inherit; font-weight: 600; text-decoration: none; }
+.entrega-dato a:hover { color: var(--verde-oscuro); text-decoration: underline; }
+.entrega-dato .entrega-wa { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 0.2rem; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #25d366, #128c7e); text-decoration: none; transition: transform 0.3s var(--curva); }
+.entrega-dato .entrega-wa i { color: #fff; font-size: 0.8rem; }
+.entrega-dato .entrega-wa:hover { transform: scale(1.18) rotate(-8deg); color: #fff; text-decoration: none; }
+.entrega-notas { font-style: italic; }
+.entrega-plantas { flex-basis: 100%; }
+.aviso { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.2rem; font-weight: 600; }
+.aviso-ok { color: #157347; }
+.aviso-falla { color: #b3173f; cursor: help; }
 .estado { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: capitalize; }
 .estado::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .estado-pendiente { background: #fff4d6; color: #a16207; }

@@ -53,3 +53,9 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    Con el remitente de prueba onboarding@resend.dev, Resend solo entrega al
    correo con el que te registraste. Los mensajes también se leen en
    /admin/mensajes aunque el correo falle.
+
+   Avisos de domicilio: cada vez que un cliente confirma un domicilio, llega
+   al mismo correo un aviso con sus datos (cliente, dirección, teléfono,
+   notas, plantas y total) y un botón para escribirle por WhatsApp. Usa la
+   misma RESEND_API_KEY. El pedido y sus datos de entrega también se ven en
+   /admin/pedidos; si el aviso falla, esa fila dice "Aviso no enviado".

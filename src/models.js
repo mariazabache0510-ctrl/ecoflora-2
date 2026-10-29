@@ -90,6 +90,9 @@ const pedidoSchema = new mongoose.Schema(
     ciudad_envio: { type: String, default: '' },
     telefono_contacto: { type: String, default: '' },
     notas: { type: String, default: '' },
+    // Aviso por correo al administrador: null = aún sin intentar, true = enviado, false = falló (ver error_aviso).
+    aviso_enviado: { type: Boolean, default: null },
+    error_aviso: { type: String, default: '' },
     detalle: {
       type: [
         {
