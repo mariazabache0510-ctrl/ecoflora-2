@@ -44,8 +44,8 @@
                     <div class="mb-3">
                         <label class="form-label" for="rol">Rol</label>
                         <select id="rol" name="rol" class="form-select" required>
-                            <option value="cliente" <%= usuario.rol === 'cliente' ? 'selected' : '' %>>Cliente</option>
-                            <option value="admin" <%= usuario.rol === 'admin' ? 'selected' : '' %>>Administrador</option>
+                            <option value="cliente" data-icono="bi-person" data-tono="verde" data-detalle="Compra plantas y revisa sus pedidos" <%= usuario.rol === 'cliente' ? 'selected' : '' %>>Cliente</option>
+                            <option value="admin" data-icono="bi-shield-check" data-tono="tierra" data-detalle="Gestiona usuarios, pedidos y mensajes" <%= usuario.rol === 'admin' ? 'selected' : '' %>>Administrador</option>
                         </select>
                     </div>
                     <div class="mb-4">

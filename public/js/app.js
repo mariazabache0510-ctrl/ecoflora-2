@@ -359,6 +359,388 @@
         });
     }
 
+    /* ---------- Menús desplegables propios ----------
+       Sustituyen al <select> nativo (cuya lista dibuja el sistema operativo y no se puede estilar).
+       El <select> original sigue en la página, oculto: así el formulario, la validación y los eventos
+       "change" funcionan igual. Cualquier <select> nuevo se convierte solo; para dejar uno nativo,
+       añade el atributo data-nativo.
+       Opciones: data-icono (clase de Bootstrap Icons), data-tono (verde, ambar, azul, indigo, rojo,
+       tierra) y data-detalle (texto pequeño debajo del nombre). */
+    function iniciarDesplegables() {
+        var panel = null;       // un solo panel compartido por todos los menús
+        var abierto = null;     // menú abierto en este momento
+        var contador = 0;
+        var instancias = [];
+        var busqueda = '';
+        var temporizador = null;
+        var pendiente = false;
+
+        function textoDe(opcion) {
+            return (opcion.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function obtenerPanel() {
+            if (panel) return panel;
+            panel = document.createElement('div');
+            panel.id = 'selector-panel';
+            panel.className = 'selector-panel';
+            panel.setAttribute('role', 'listbox');
+            panel.tabIndex = -1;
+            document.body.appendChild(panel);
+            // El foco se queda en el botón para que el teclado siga funcionando.
+            panel.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            panel.addEventListener('click', function (e) {
+                var opcion = e.target.closest('.selector-opcion');
+                if (!opcion || !abierto || opcion.getAttribute('aria-disabled') === 'true') return;
+                elegir(Number(opcion.getAttribute('data-n')));
+            });
+            panel.addEventListener('mousemove', function (e) {
+                var opcion = e.target.closest('.selector-opcion');
+                if (!opcion || !abierto || opcion.getAttribute('aria-disabled') === 'true') return;
+                var n = Number(opcion.getAttribute('data-n'));
+                if (n !== abierto.activo) resaltar(n, false);
+            });
+            return panel;
+        }
+
+        function pintarIcono(caja, opcion) {
+            var icono = opcion && opcion.getAttribute('data-icono');
+            caja.hidden = !icono;
+            if (!icono) return;
+            caja.firstChild.className = 'bi ' + icono;
+            var tono = opcion.getAttribute('data-tono');
+            if (tono) caja.setAttribute('data-tono', tono);
+            else caja.removeAttribute('data-tono');
+        }
+
+        function sincronizar(inst, animar) {
+            var select = inst.select;
+            var opcion = select.options[select.selectedIndex];
+            var texto = opcion ? textoDe(opcion) : '';
+            inst.valor.textContent = texto;
+            pintarIcono(inst.icono, opcion);
+            inst.boton.classList.toggle('selector-vacio', !opcion || opcion.value === '');
+            inst.boton.disabled = select.disabled;
+            if (inst.nombre) inst.boton.setAttribute('aria-label', inst.nombre + ': ' + texto);
+            if (animar && !reducir) {
+                inst.valor.classList.remove('cambio');
+                void inst.valor.offsetWidth;
+                inst.valor.classList.add('cambio');
+            }
+        }
+
+        function llenar(inst) {
+            var lista = obtenerPanel();
+            lista.textContent = '';
+            inst.items = [];
+            var agregar = function (opcion) {
+                if (opcion.hidden) return;
+                var n = inst.items.length;
+                var fila = document.createElement('div');
+                fila.className = 'selector-opcion' + (opcion.disabled ? ' deshabilitada' : '');
+                fila.id = 'selector-op-' + n;
+                fila.setAttribute('role', 'option');
+                fila.setAttribute('data-n', String(n));
+                fila.setAttribute('aria-selected', opcion.selected ? 'true' : 'false');
+                if (opcion.disabled) fila.setAttribute('aria-disabled', 'true');
+                fila.style.setProperty('--i', String(n));
+
+                if (opcion.getAttribute('data-icono')) {
+                    var caja = document.createElement('span');
+                    caja.className = 'selector-icono';
+                    caja.setAttribute('aria-hidden', 'true');
+                    caja.appendChild(document.createElement('i'));
+                    pintarIcono(caja, opcion);
+                    fila.appendChild(caja);
+                }
+
+                var bloque = document.createElement('span');
+                bloque.className = 'selector-texto';
+                var nombre = document.createElement('span');
+                nombre.className = 'selector-nombre';
+                nombre.textContent = textoDe(opcion);
+                bloque.appendChild(nombre);
+                var detalle = opcion.getAttribute('data-detalle');
+                if (detalle) {
+                    var pequeno = document.createElement('small');
+                    pequeno.className = 'selector-detalle';
+                    pequeno.textContent = detalle;
+                    bloque.appendChild(pequeno);
+                }
+                fila.appendChild(bloque);
+
+                var marca = document.createElement('i');
+                marca.className = 'bi bi-check2 selector-check';
+                marca.setAttribute('aria-hidden', 'true');
+                fila.appendChild(marca);
+
+                lista.appendChild(fila);
+                inst.items.push({ opcion: opcion, el: fila });
+            };
+            Array.prototype.forEach.call(inst.select.children, function (hijo) {
+                if (hijo.tagName === 'OPTGROUP') {
+                    var titulo = document.createElement('div');
+                    titulo.className = 'selector-grupo';
+                    titulo.setAttribute('role', 'presentation');
+                    titulo.textContent = hijo.label;
+                    lista.appendChild(titulo);
+                    Array.prototype.forEach.call(hijo.children, function (opcion) { agregar(opcion); });
+                } else if (hijo.tagName === 'OPTION') {
+                    agregar(hijo);
+                }
+            });
+        }
+
+        function colocar() {
+            if (!abierto || !panel) return;
+            var caja = abierto.boton.getBoundingClientRect();
+            if (caja.bottom < 0 || caja.top > window.innerHeight) { cerrar(false); return; }
+            var margen = 8;
+            var hueco = 6;
+            var tope = 300;
+            panel.style.minWidth = Math.max(caja.width, 168) + 'px';
+            panel.style.maxHeight = tope + 'px';
+            var natural = panel.offsetHeight;
+            var abajo = window.innerHeight - caja.bottom - hueco - margen;
+            var arriba = caja.top - hueco - margen;
+            // Si abajo no cabe y arriba hay más sitio, el menú se abre hacia arriba.
+            var haciaArriba = natural > abajo && arriba > abajo;
+            var espacio = Math.max(120, Math.min(tope, haciaArriba ? arriba : abajo));
+            panel.style.maxHeight = espacio + 'px';
+            var alto = Math.min(natural, espacio);
+            var ancho = panel.offsetWidth;
+            var izquierda = Math.max(margen, Math.min(caja.left, window.innerWidth - ancho - margen));
+            panel.style.left = izquierda + 'px';
+            panel.style.top = (haciaArriba ? caja.top - hueco - alto : caja.bottom + hueco) + 'px';
+            panel.setAttribute('data-lado', haciaArriba ? 'arriba' : 'abajo');
+        }
+
+        function resaltar(n, desplazar) {
+            if (!abierto) return;
+            var anterior = abierto.items[abierto.activo];
+            if (anterior) anterior.el.classList.remove('activa');
+            abierto.activo = n;
+            var item = abierto.items[n];
+            if (!item) { abierto.boton.removeAttribute('aria-activedescendant'); return; }
+            item.el.classList.add('activa');
+            abierto.boton.setAttribute('aria-activedescendant', item.el.id);
+            if (desplazar) {
+                var arriba = item.el.offsetTop;
+                var abajo = arriba + item.el.offsetHeight;
+                if (arriba < panel.scrollTop + 4) panel.scrollTop = Math.max(0, arriba - 6);
+                else if (abajo > panel.scrollTop + panel.clientHeight - 4) panel.scrollTop = abajo - panel.clientHeight + 6;
+            }
+        }
+
+        function mover(paso, desde) {
+            if (!abierto) return;
+            var n = desde === undefined ? abierto.activo : desde;
+            for (n += paso; n >= 0 && n < abierto.items.length; n += paso) {
+                if (!abierto.items[n].opcion.disabled) { resaltar(n, true); return; }
+            }
+        }
+
+        function buscar(letra) {
+            if (!abierto) return;
+            busqueda += letra.toLowerCase();
+            clearTimeout(temporizador);
+            temporizador = setTimeout(function () { busqueda = ''; }, 700);
+            var total = abierto.items.length;
+            var inicio = busqueda.length === 1 ? abierto.activo + 1 : Math.max(abierto.activo, 0);
+            for (var k = 0; k < total; k += 1) {
+                var n = (inicio + k) % total;
+                var item = abierto.items[n];
+                if (!item.opcion.disabled && textoDe(item.opcion).toLowerCase().indexOf(busqueda) === 0) {
+                    resaltar(n, true);
+                    return;
+                }
+            }
+        }
+
+        function abrir(inst) {
+            if (inst.select.disabled) return;
+            if (abierto && abierto !== inst) cerrar(false);
+            if (abierto === inst) return;
+            llenar(inst);
+            var lista = obtenerPanel();
+            lista.classList.remove('abierto');
+            abierto = inst;
+            inst.activo = -1;
+            inst.envoltura.classList.add('abierto');
+            inst.boton.setAttribute('aria-expanded', 'true');
+            inst.boton.setAttribute('aria-controls', 'selector-panel');
+            try { inst.boton.focus({ preventScroll: true }); } catch (error) { inst.boton.focus(); }
+            colocar();
+            if (!abierto) return;
+            void lista.offsetWidth;
+            lista.classList.add('abierto');
+            var elegida = -1;
+            var primera = -1;
+            inst.items.forEach(function (item, n) {
+                if (item.opcion.selected && elegida < 0) elegida = n;
+                if (!item.opcion.disabled && primera < 0) primera = n;
+            });
+            resaltar(elegida >= 0 ? elegida : primera, true);
+        }
+
+        function cerrar(devolverFoco) {
+            if (!abierto) return;
+            var inst = abierto;
+            abierto = null;
+            busqueda = '';
+            if (panel) panel.classList.remove('abierto');
+            inst.envoltura.classList.remove('abierto');
+            inst.boton.setAttribute('aria-expanded', 'false');
+            inst.boton.removeAttribute('aria-activedescendant');
+            if (devolverFoco) inst.boton.focus();
+        }
+
+        function elegir(n) {
+            var inst = abierto;
+            if (!inst) return;
+            var item = inst.items[n];
+            if (!item || item.opcion.disabled) return;
+            var cambio = inst.select.selectedIndex !== item.opcion.index;
+            inst.select.selectedIndex = item.opcion.index;
+            sincronizar(inst, cambio);
+            cerrar(true);
+            if (cambio) {
+                inst.select.dispatchEvent(new Event('input', { bubbles: true }));
+                inst.select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function crear(select) {
+            if (select.multiple || select.size > 1 || select.hasAttribute('data-nativo') || select.hasAttribute('data-listo')) return;
+            select.setAttribute('data-listo', '1');
+            contador += 1;
+            var id = 'selector-' + contador;
+
+            var envoltura = document.createElement('div');
+            envoltura.className = 'selector-eco' + (select.classList.contains('form-select-sm') ? ' selector-sm' : '');
+            if (select.style.width) { envoltura.style.width = select.style.width; select.style.width = ''; }
+
+            var etiqueta = null;
+            if (select.id) {
+                $$('label').forEach(function (candidata) { if (candidata.htmlFor === select.id) etiqueta = candidata; });
+            }
+
+            var boton = document.createElement('button');
+            boton.type = 'button';
+            boton.id = id;
+            boton.className = 'selector-boton';
+            boton.setAttribute('role', 'combobox');
+            boton.setAttribute('aria-haspopup', 'listbox');
+            boton.setAttribute('aria-expanded', 'false');
+
+            var icono = document.createElement('span');
+            icono.className = 'selector-icono';
+            icono.hidden = true;
+            icono.setAttribute('aria-hidden', 'true');
+            icono.appendChild(document.createElement('i'));
+            var valor = document.createElement('span');
+            valor.className = 'selector-valor';
+            valor.id = id + '-valor';
+            var flecha = document.createElement('i');
+            flecha.className = 'bi bi-chevron-down selector-flecha';
+            flecha.setAttribute('aria-hidden', 'true');
+            boton.appendChild(icono);
+            boton.appendChild(valor);
+            boton.appendChild(flecha);
+
+            var nombre = '';
+            if (etiqueta) {
+                if (!etiqueta.id) etiqueta.id = id + '-etiqueta';
+                boton.setAttribute('aria-labelledby', etiqueta.id + ' ' + valor.id);
+            } else {
+                nombre = select.getAttribute('aria-label') || select.getAttribute('name') || '';
+            }
+
+            select.parentNode.insertBefore(envoltura, select);
+            envoltura.appendChild(boton);
+            envoltura.appendChild(select);
+            select.classList.remove('form-select', 'form-select-sm');
+            select.classList.add('selector-nativo');
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+
+            var inst = { select: select, envoltura: envoltura, boton: boton, valor: valor, icono: icono, nombre: nombre, items: [], activo: -1 };
+
+            boton.addEventListener('click', function () {
+                if (abierto === inst) cerrar(true);
+                else abrir(inst);
+            });
+            boton.addEventListener('keydown', function (e) {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                var tecla = e.key;
+                if (abierto !== inst) {
+                    if (tecla === 'ArrowDown' || tecla === 'ArrowUp' || tecla === 'Enter' || tecla === ' ') {
+                        e.preventDefault();
+                        abrir(inst);
+                    } else if (tecla.length === 1) {
+                        abrir(inst);
+                        buscar(tecla);
+                    }
+                    return;
+                }
+                switch (tecla) {
+                    case 'ArrowDown': e.preventDefault(); mover(1); break;
+                    case 'ArrowUp': e.preventDefault(); mover(-1); break;
+                    case 'Home': e.preventDefault(); mover(1, -1); break;
+                    case 'End': e.preventDefault(); mover(-1, inst.items.length); break;
+                    case 'Enter':
+                    case ' ': e.preventDefault(); elegir(inst.activo); break;
+                    case 'Escape': e.preventDefault(); cerrar(true); break;
+                    case 'Tab': cerrar(false); break;
+                    default: if (tecla.length === 1) { e.preventDefault(); buscar(tecla); }
+                }
+            });
+            // Evita que la barra espaciadora vuelva a abrir el menú justo después de elegir.
+            boton.addEventListener('keyup', function (e) { if (e.key === ' ') e.preventDefault(); });
+            // Pulsar la etiqueta (label) lleva el foco al botón.
+            select.addEventListener('focus', function () { boton.focus(); });
+            select.addEventListener('change', function () { sincronizar(inst, false); });
+            if (select.form) {
+                select.form.addEventListener('reset', function () { setTimeout(function () { sincronizar(inst, false); }, 0); });
+            }
+
+            sincronizar(inst, false);
+            instancias.push(inst);
+        }
+
+        function barrer(raiz) {
+            if (!raiz || raiz.nodeType !== 1) return;
+            if (raiz.tagName === 'SELECT') crear(raiz);
+            else $$('select', raiz).forEach(crear);
+        }
+
+        document.addEventListener('pointerdown', function (e) {
+            if (!abierto) return;
+            if ((panel && panel.contains(e.target)) || abierto.envoltura.contains(e.target)) return;
+            cerrar(false);
+        }, true);
+
+        var reposicionar = function (e) {
+            if (!abierto || pendiente) return;
+            if (e && e.type === 'scroll' && panel && panel.contains(e.target)) return;
+            pendiente = true;
+            window.requestAnimationFrame(function () { pendiente = false; colocar(); });
+        };
+        window.addEventListener('scroll', reposicionar, true);
+        window.addEventListener('resize', reposicionar);
+        window.addEventListener('pageshow', function () {
+            instancias.forEach(function (inst) { sincronizar(inst, false); });
+        });
+
+        barrer(document.body);
+        // Si más adelante se agrega un <select> a la página, también se convierte.
+        if ('MutationObserver' in window) {
+            new MutationObserver(function (cambios) {
+                cambios.forEach(function (cambio) { Array.prototype.forEach.call(cambio.addedNodes, barrer); });
+            }).observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
     /* ---------- Alertas ---------- */
     function iniciarAlertas() {
         $$('.alert').forEach(function (alerta) {
@@ -410,6 +792,7 @@
             iniciarAgregarAlCarrito,
             iniciarGaleria,
             iniciarFormularios,
+            iniciarDesplegables,
             iniciarAlertas,
             iniciarTransicion,
             iniciarSubir

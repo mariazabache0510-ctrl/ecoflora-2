@@ -1,4 +1,14 @@
 <%- include(partial('header')) %>
+<%
+    // Icono y color de cada estado en el menú desplegable (mismos tonos que las etiquetas de estado).
+    var ICONOS_ESTADO = {
+        pendiente: ['bi-hourglass-split', 'ambar'],
+        confirmado: ['bi-check2-circle', 'azul'],
+        en_camino: ['bi-truck', 'indigo'],
+        entregado: ['bi-box-seam', 'verde'],
+        cancelado: ['bi-x-circle', 'rojo']
+    };
+%>
 
 <div class="container contenedor-pagina">
     <div class="panel-cabecera reveal">
@@ -30,9 +40,9 @@
                         <td>
                             <form method="POST" action="/admin/pedidos" class="d-flex gap-2">
                                 <input type="hidden" name="id_pedido" value="<%= pedido.id_pedido %>">
-                                <select name="estado" class="form-select form-select-sm" style="width: 140px;">
-                                    <% ESTADOS.forEach(function(estado) { %>
-                                        <option value="<%= estado %>" <%= pedido.estado === estado ? 'selected' : '' %>><%= ucfirst(estado) %></option>
+                                <select name="estado" class="form-select form-select-sm" style="width: 170px;" aria-label="Estado del pedido <%= pedido.id_pedido %>">
+                                    <% ESTADOS.forEach(function(estado) { var marca = ICONOS_ESTADO[estado] || ['bi-circle', 'verde']; %>
+                                        <option value="<%= estado %>" data-icono="<%= marca[0] %>" data-tono="<%= marca[1] %>" <%= pedido.estado === estado ? 'selected' : '' %>><%= ucfirst(estado).replace('_', ' ') %></option>
                                     <% }) %>
                                 </select>
                                 <button type="submit" name="cambiar_estado" class="btn btn-sm btn-ecoflora">Actualizar</button>

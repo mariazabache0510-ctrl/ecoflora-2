@@ -251,6 +251,7 @@ async function main() {
   assert(pedidos.text.includes('Cliente Editado') && pedidos.text.includes('estado estado-pendiente'), 'el admin ve el pedido pendiente');
   const idMatch = pedidos.text.match(/name="id_pedido" value="(\d+)"/);
   assert(idMatch, 'el pedido tiene id');
+  assert(pedidos.text.includes('data-icono="bi-truck"') && pedidos.text.includes('data-tono="indigo"') && pedidos.text.includes('>En camino<'), 'el menú de estados trae iconos, colores y nombres legibles');
   await follow(admin, 'POST', '/admin/pedidos', {
     id_pedido: idMatch[1],
     estado: 'entregado',
@@ -263,6 +264,8 @@ async function main() {
   assert(usuarios.text.includes('clienteprueba'), 'el admin lista clientes');
   const idUsuario = usuarios.text.match(/\/admin\/usuarios\/(\d+)\/editar/);
   assert(idUsuario, 'hay enlace para editar');
+  const editar = await admin.request('GET', '/admin/usuarios/' + idUsuario[1] + '/editar');
+  assert(editar.text.includes('data-icono="bi-shield-check"') && editar.text.includes('data-detalle='), 'el menú de rol trae iconos y descripciones');
   await follow(admin, 'POST', '/admin/usuarios/' + idUsuario[1], {
     nombre: 'Cliente Editado',
     usuario: 'clienteprueba',
@@ -293,9 +296,13 @@ async function main() {
   assert(noExiste.status === 404 && noExiste.text.includes('Página no encontrada'), 'la página 404 rediseñada');
 
   const css = await fetch(base + '/css/estilos.css');
-  assert(css.status === 200 && (await css.text()).includes('--verde-oscuro'), 'el CSS responde');
+  const textoCss = await css.text();
+  assert(css.status === 200 && textoCss.includes('--verde-oscuro'), 'el CSS responde');
+  assert(textoCss.includes('.selector-panel') && textoCss.includes('.selector-boton'), 'el CSS incluye los menús desplegables propios');
   const js = await fetch(base + '/js/app.js');
-  assert(js.status === 200 && (await js.text()).includes('DOMContentLoaded'), 'el JavaScript responde');
+  const textoJs = await js.text();
+  assert(js.status === 200 && textoJs.includes('DOMContentLoaded'), 'el JavaScript responde');
+  assert(textoJs.includes('iniciarDesplegables'), 'el JavaScript convierte los <select> en menús propios');
 
   console.log('Flujo local completo.');
 }
