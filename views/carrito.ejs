@@ -11,6 +11,7 @@
     </div>
     <% } else { %>
     <form method="POST" action="/carrito" data-actualizar-carrito>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="row g-4">
             <div class="col-lg-8">
                 <% items.forEach(function(item, i) { %>
@@ -27,7 +28,7 @@
                             <button type="button" data-paso="1" aria-label="Más"><i class="bi bi-plus"></i></button>
                         </div>
                         <span class="item-subtotal">$<%= formatPrice(item.precio * item.cantidad) %></span>
-                        <a href="/carrito?eliminar=<%= item.id_planta %>" class="btn btn-peligro-suave btn-quitar" onclick="return confirm('¿Eliminar?')" aria-label="Quitar <%= item.nombre %>" title="Quitar"><i class="bi bi-trash"></i></a>
+                        <button type="submit" form="quitar-<%= item.id_planta %>" class="btn btn-peligro-suave btn-quitar" data-confirmar="¿Eliminar?" aria-label="Quitar <%= item.nombre %>" title="Quitar"><i class="bi bi-trash"></i></button>
                     </div>
                 </article>
                 <% }) %>
@@ -62,6 +63,13 @@
             </div>
         </div>
     </form>
+    <%# Un formulario oculto por planta para "quitar" (POST con token). Los botones lo usan con form="quitar-ID". %>
+    <% items.forEach(function(item) { %>
+    <form method="POST" action="/carrito/eliminar" id="quitar-<%= item.id_planta %>" hidden>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="id_planta" value="<%= item.id_planta %>">
+    </form>
+    <% }) %>
     <% } %>
 </div>
 

@@ -47,10 +47,12 @@
                 <a href="<%= respuesta %>" class="btn btn-ecoflora btn-sm"><i class="bi bi-reply me-1"></i>Responder por correo</a>
                 <% if (wa) { %><a href="<%= wa %>" class="btn btn-whatsapp btn-sm" target="_blank" rel="noopener noreferrer"><i class="bi bi-whatsapp me-1"></i>WhatsApp</a><% } %>
                 <form method="POST" action="/admin/mensajes/<%= m.id_contacto %>/leido">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="hidden" name="leido" value="<%= m.leido ? '0' : '1' %>">
                     <button type="submit" class="btn btn-suave btn-sm"><i class="bi bi-<%= m.leido ? 'envelope' : 'envelope-open' %> me-1"></i><%= m.leido ? 'Marcar como no leído' : 'Marcar como leído' %></button>
                 </form>
-                <form method="POST" action="/admin/mensajes/<%= m.id_contacto %>/eliminar" onsubmit="return confirm('¿Eliminar este mensaje?');">
+                <form method="POST" action="/admin/mensajes/<%= m.id_contacto %>/eliminar" data-confirmar="¿Eliminar este mensaje?">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-peligro-suave btn-sm"><i class="bi bi-trash me-1"></i>Eliminar</button>
                 </form>
             </div>

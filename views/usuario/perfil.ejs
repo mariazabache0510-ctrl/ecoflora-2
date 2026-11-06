@@ -14,7 +14,8 @@
             <div class="form-tarjeta vidrio reveal" style="--i: 1">
                 <% if (actualizado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Tus datos fueron actualizados correctamente.</div><% } %>
                 <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
-                <form action="/usuario/perfil" method="POST" onsubmit="return validarPerfil();">
+                <form action="/usuario/perfil" method="POST" data-validar>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="mb-3">
                         <label class="form-label" for="nombre">Nombre completo</label>
                         <div class="campo"><i class="bi bi-person-vcard"></i><input type="text" name="nombre" id="nombre" class="form-control" value="<%= datos.nombre %>" required></div>
@@ -68,7 +69,5 @@
         </div>
     </div>
 </div>
-
-<script>function validarPerfil(){let n=document.getElementById("nombre"),e=document.getElementById("email"),v=true;n.classList.remove("is-invalid");e.classList.remove("is-invalid");if(n.value.trim()===""){n.classList.add("is-invalid");v=false;}if(e.value.trim()===""){e.classList.add("is-invalid");v=false;}return v;}</script>
 
 <%- include(partial('footer')) %>

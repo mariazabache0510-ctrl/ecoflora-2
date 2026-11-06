@@ -77,7 +77,8 @@ function plantImg(planta, attrs = {}) {
   if (attrs.width) parts.push(`width="${escapeHtml(attrs.width)}"`);
   if (attrs.height) parts.push(`height="${escapeHtml(attrs.height)}"`);
   if (attrs.style) parts.push(`style="${escapeHtml(attrs.style)}"`);
-  parts.push(`onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}'"`);
+  // El respaldo lo pone public/js/app.js (data-respaldo): la política de seguridad no permite onerror="" en línea.
+  parts.push('data-respaldo');
   return `<img ${parts.join(' ')}>`;
 }
 

@@ -90,6 +90,12 @@
 
     /* ---------- Llamadas al servidor (JSON) ---------- */
 
+    // Token CSRF de la sesión: lo imprime el servidor en la cámara (data-csrf) y se manda en cada POST.
+    function tokenCsrf() {
+        var elemento = document.querySelector('[data-csrf]');
+        return (elemento && elemento.getAttribute('data-csrf')) || '';
+    }
+
     function api(ruta, cuerpo) {
         // Si el servidor no responde en un rato se corta la espera, para no dejar la pantalla "verificando" para siempre.
         var control = window.AbortController ? new window.AbortController() : null;
@@ -97,7 +103,7 @@
         return fetch(ruta, {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': tokenCsrf() },
             body: JSON.stringify(cuerpo || {}),
             signal: control ? control.signal : undefined
         }).then(function (respuesta) {

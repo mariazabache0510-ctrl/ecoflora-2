@@ -21,9 +21,11 @@ function assert(condicion, mensaje) {
   console.log('ok', mensaje);
 }
 
+// Imita a un navegador: guarda cookies y el token CSRF de la sesión y lo manda en cada POST.
 function cliente() {
   const jar = new Map();
-  return async function pedir(metodo, ruta, cuerpo) {
+  let token = null;
+  async function crudo(metodo, ruta, cuerpo) {
     const headers = { Accept: 'text/html' };
     const cookie = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
     if (cookie) headers.Cookie = cookie;
@@ -33,6 +35,7 @@ function cliente() {
       payload = new URLSearchParams(cuerpo).toString();
     }
     const respuesta = await fetch(base + ruta, { method: metodo, headers, body: payload, redirect: 'manual' });
+    const sesionAntes = jar.get('ecoflora.sid');
     (typeof respuesta.headers.getSetCookie === 'function' ? respuesta.headers.getSetCookie() : []).forEach((entrada) => {
       const [par] = entrada.split(';');
       const i = par.indexOf('=');
@@ -40,7 +43,18 @@ function cliente() {
       if (valor) jar.set(par.slice(0, i).trim(), valor);
       else jar.delete(par.slice(0, i).trim());
     });
-    return { status: respuesta.status, text: await respuesta.text(), location: respuesta.headers.get('location') };
+    if (jar.get('ecoflora.sid') !== sesionAntes) token = null;
+    const text = await respuesta.text();
+    const encontrado = text.match(/name="_csrf" value="([^"]+)"/);
+    if (encontrado) token = encontrado[1];
+    return { status: respuesta.status, text, location: respuesta.headers.get('location') };
+  }
+  return async function pedir(metodo, ruta, cuerpo) {
+    if (metodo !== 'GET') {
+      if (!token) await crudo('GET', '/login');
+      return crudo(metodo, ruta, { ...(cuerpo || {}), _csrf: token });
+    }
+    return crudo(metodo, ruta, cuerpo);
   };
 }
 
@@ -129,7 +143,7 @@ async function main() {
 
     // 3) La bandeja del admin muestra ambos y marca cuál no salió.
     const admin = cliente();
-    const login = await admin('POST', '/login', { usuario: 'admin', password: 'Admin123' });
+    const login = await admin('POST', '/login', { usuario: 'admin', password: process.env.ADMIN_INITIAL_PASSWORD || 'Admin123' });
     assert(login.status === 302 || login.status === 200, 'el admin inicia sesión en la app de prueba');
     const bandeja = await admin('GET', '/admin/mensajes');
     const trozos = bandeja.text.split('<article').filter((t) => t.includes(marca));

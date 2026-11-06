@@ -324,7 +324,7 @@
     /* ---------- Formularios ---------- */
     function iniciarFormularios() {
         // Validación de campos obligatorios en formularios que la piden.
-        $$('form[onsubmit]').forEach(function (form) {
+        $$('form[data-validar]').forEach(function (form) {
             form.addEventListener('submit', function (e) {
                 var valido = true;
                 $$('[required]', form).forEach(function (campo) {
@@ -893,8 +893,47 @@
         });
     }
 
+    /* ---------- Acciones sin JavaScript en línea ----------
+       La política de seguridad del sitio (CSP) no permite onclick="", onsubmit="", onerror="" ni "javascript:".
+       En su lugar las vistas usan atributos y este código los atiende para todo el sitio:
+       data-confirmar="¿Seguro?" (formularios y botones), data-volver (enlace "Volver") y data-respaldo
+       (imagen de reemplazo si una foto no carga). Debe iniciarse ANTES que la transición entre páginas. */
+    function iniciarSeguridad() {
+        document.addEventListener('submit', function (e) {
+            var formulario = e.target;
+            if (!formulario.matches || !formulario.matches('form[data-confirmar]')) return;
+            if (!window.confirm(formulario.getAttribute('data-confirmar'))) e.preventDefault();
+        });
+        document.addEventListener('click', function (e) {
+            var elemento = e.target.closest && e.target.closest('button[data-confirmar], a[data-confirmar]');
+            if (!elemento) return;
+            if (!window.confirm(elemento.getAttribute('data-confirmar'))) e.preventDefault();
+        });
+        document.addEventListener('click', function (e) {
+            var volver = e.target.closest && e.target.closest('a[data-volver]');
+            if (volver && window.history.length > 1) { e.preventDefault(); window.history.back(); }
+        });
+
+        var RESPALDO = '/img/plantas/_default.svg';
+        function usarRespaldo(imagen) {
+            if (imagen.getAttribute('data-respaldo-usado')) return;
+            imagen.setAttribute('data-respaldo-usado', '1');
+            imagen.src = RESPALDO;
+        }
+        // El evento "error" de las imágenes no sube por el documento, pero sí se puede captar en la fase de captura.
+        document.addEventListener('error', function (e) {
+            var imagen = e.target;
+            if (imagen && imagen.tagName === 'IMG' && imagen.hasAttribute('data-respaldo')) usarRespaldo(imagen);
+        }, true);
+        // Las que ya fallaron antes de que este código cargara.
+        $$('img[data-respaldo]').forEach(function (imagen) {
+            if (imagen.complete && imagen.naturalWidth === 0) usarRespaldo(imagen);
+        });
+    }
+
     alListo(function () {
         [
+            iniciarSeguridad,
             iniciarNavegacion,
             iniciarJardin,
             iniciarRevelado,

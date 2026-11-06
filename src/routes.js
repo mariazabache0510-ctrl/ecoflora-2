@@ -1,7 +1,7 @@
 const { Usuario, Categoria, Planta, Pedido, Historial, Contacto, Carrito, RostroUsuario, nextId } = require('./models');
-const { hashPassword, verifyPassword } = require('./passwords');
+const { hashPassword, verifyPassword, gastarTiempoDeVerificacion, CLAVE_MINIMA, MENSAJE_CLAVE_CORTA } = require('./passwords');
 const { getCartItems, addItem, updateQuantities, removeItem } = require('./cart');
-const { iniciarSesion, destinoTrasLogin } = require('./sesion');
+const { iniciarSesion, cerrarSesion, destinoTrasLogin } = require('./sesion');
 const rostro = require('./rostro');
 const { registrarRutasRostro } = require('./rutas-rostro');
 const { placeOrder, StockError } = require('./orders');
@@ -11,6 +11,14 @@ const { crearLimitador } = require('./limite');
 
 // Como máximo 5 mensajes por IP cada 10 minutos en el formulario de contacto.
 const limiteContacto = crearLimitador({ max: 5, ventanaMs: 10 * 60 * 1000 });
+
+// Inicio de sesión con contraseña: solo cuentan los intentos FALLIDOS (entrar bien no gasta intentos).
+// Como máximo 5 por IP+usuario y 10 por usuario cada 10 minutos. Al entrar bien se borran los dos contadores.
+const limiteLoginIp = crearLimitador({ max: 5, ventanaMs: 10 * 60 * 1000 });
+const limiteLoginUsuario = crearLimitador({ max: 10, ventanaMs: 10 * 60 * 1000 });
+// Un solo mensaje para "no existe" y "contraseña mala": así no se revela qué usuarios existen.
+const MENSAJE_LOGIN_INCORRECTO = 'Usuario o contraseña incorrectos';
+const MENSAJE_LOGIN_DEMASIADOS = 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo, o entra con tu rostro si ya lo activaste.';
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Con 5 unidades o menos se considera "poco stock" (igual que en las tarjetas del catálogo).
@@ -182,10 +190,23 @@ function registerRoutes(app) {
       if (!usuario || !password) {
         return res.render('login', { error: 'Completa todos los campos.' });
       }
+      const claveIp = `${req.ip}|${usuario.toLowerCase().slice(0, 120)}`;
+      const claveUsuario = `u:${usuario.toLowerCase().slice(0, 120)}`;
+      if (limiteLoginIp.excedido(claveIp) || limiteLoginUsuario.excedido(claveUsuario)) {
+        return res.status(429).render('login', { error: MENSAJE_LOGIN_DEMASIADOS });
+      }
       const user = await Usuario.findOne({ $or: [{ usuario }, { email: usuario }] }).collation(collation);
-      if (!user) return res.render('login', { error: 'Usuario no encontrado.' });
-      const ok = await verifyPassword(password, user.password);
-      if (!ok) return res.render('login', { error: 'Contraseña incorrecta.' });
+      // Si el usuario no existe se compara igual (contra un hash inventado) para tardar lo mismo.
+      const ok = user
+        ? await verifyPassword(password, user.password)
+        : await gastarTiempoDeVerificacion(password);
+      if (!ok) {
+        limiteLoginIp.permitir(claveIp);
+        limiteLoginUsuario.permitir(claveUsuario);
+        return res.status(401).render('login', { error: MENSAJE_LOGIN_INCORRECTO });
+      }
+      limiteLoginIp.liberar(claveIp);
+      limiteLoginUsuario.liberar(claveUsuario);
       await iniciarSesion(req, user);
       const destino = destinoTrasLogin(user);
       return req.session.save(() => res.redirect(destino));
@@ -214,8 +235,8 @@ function registerRoutes(app) {
       if (password !== confirmar) {
         return res.render('registro', { error: 'Las contraseñas no coinciden.', exito: '' });
       }
-      if (password.length < 5) {
-        return res.render('registro', { error: 'La contraseña debe tener al menos 5 caracteres.', exito: '' });
+      if (password.length < CLAVE_MINIMA) {
+        return res.render('registro', { error: MENSAJE_CLAVE_CORTA, exito: '' });
       }
       const exists = await Usuario.findOne({ $or: [{ usuario }, { email }] }).collation(collation);
       if (exists) {
@@ -245,8 +266,13 @@ function registerRoutes(app) {
     }
   });
 
-  app.get('/logout', (req, res) => {
-    req.session.destroy(() => res.redirect('/'));
+  app.get('/logout', async (req, res, next) => {
+    try {
+      await cerrarSesion(req, res);
+      res.redirect('/');
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.post('/carrito', async (req, res, next) => {
@@ -267,12 +293,18 @@ function registerRoutes(app) {
     }
   });
 
+  // Quitar una planta del carrito cambia datos, por eso es POST (con token CSRF) y no un enlace.
+  app.post('/carrito/eliminar', async (req, res, next) => {
+    try {
+      await removeItem(req, parseInt(req.body.id_planta, 10) || 0);
+      return req.session.save(() => res.redirect('/carrito'));
+    } catch (error) {
+      return next(error);
+    }
+  });
+
   app.get('/carrito', async (req, res, next) => {
     try {
-      if (req.query.eliminar) {
-        await removeItem(req, parseInt(req.query.eliminar, 10) || 0);
-        return req.session.save(() => res.redirect('/carrito'));
-      }
       const items = await getCartItems(req);
       const total = items.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
       return res.render('carrito', { items, total });
@@ -460,6 +492,9 @@ function registerRoutes(app) {
       if (taken) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('El usuario o email ya están registrados'));
       }
+      if (password && password.length < CLAVE_MINIMA) {
+        return res.redirect('/admin/usuarios?error=' + encodeURIComponent('La nueva contraseña debe tener al menos ' + CLAVE_MINIMA + ' caracteres'));
+      }
       const update = { nombre, usuario, email, telefono, direccion, ciudad, rol };
       if (password) update.password = await hashPassword(password);
       const result = await Usuario.updateOne({ id_usuario: id }, { $set: update });
@@ -478,7 +513,8 @@ function registerRoutes(app) {
     }
   });
 
-  app.get('/admin/usuarios/:id/eliminar', requireAdmin, async (req, res, next) => {
+  // Eliminar una cuenta es POST (con token CSRF): un enlace o una imagen de otra página no puede borrarla.
+  app.post('/admin/usuarios/:id/eliminar', requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id, 10) || 0;
       if (id === req.session.id_usuario) {

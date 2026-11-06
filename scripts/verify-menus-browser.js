@@ -140,19 +140,29 @@ function verifica(condicion, mensaje) {
 // Cliente de prueba con 4 pedidos, para que la tabla del admin tenga filas.
 async function preparar() {
   const jar = new Map();
+  const guardarCookies = (r) => (r.headers.getSetCookie ? r.headers.getSetCookie() : []).forEach((c) => {
+    const [par] = c.split(';');
+    const i = par.indexOf('=');
+    const valor = par.slice(i + 1).trim();
+    if (valor) jar.set(par.slice(0, i).trim(), valor); else jar.delete(par.slice(0, i).trim());
+  });
   const pedir = async (metodo, ruta, cuerpo) => {
     const headers = { Accept: 'text/html' };
     const cookie = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
     if (cookie) headers.Cookie = cookie;
     let payload;
-    if (cuerpo) { headers['Content-Type'] = 'application/x-www-form-urlencoded'; payload = new URLSearchParams(cuerpo).toString(); }
+    if (cuerpo) {
+      // Como el navegador: antes de enviar un formulario se abre la página para tomar su token CSRF.
+      const antes = await fetch(base + '/login', { headers: { Accept: 'text/html', ...(cookie ? { Cookie: cookie } : {}) } });
+      guardarCookies(antes);
+      const token = ((await antes.text()).match(/name="_csrf" value="([^"]+)"/) || [])[1] || '';
+      const cookieNueva = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+      if (cookieNueva) headers.Cookie = cookieNueva;
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      payload = new URLSearchParams({ ...cuerpo, _csrf: token }).toString();
+    }
     const r = await fetch(base + ruta, { method: metodo, headers, body: payload, redirect: 'manual' });
-    (r.headers.getSetCookie ? r.headers.getSetCookie() : []).forEach((c) => {
-      const [par] = c.split(';');
-      const i = par.indexOf('=');
-      const valor = par.slice(i + 1).trim();
-      if (valor) jar.set(par.slice(0, i).trim(), valor); else jar.delete(par.slice(0, i).trim());
-    });
+    guardarCookies(r);
     return r.status;
   };
   await pedir('POST', '/registro', { nombre: 'Cliente Menus', usuario: 'clientemenus', email: 'menus@ecoflora.com', telefono: '3010000000', direccion: 'Carrera 10', ciudad: 'Villavicencio', password: 'clave123', confirmar: 'clave123' });
@@ -177,7 +187,7 @@ async function main() {
   await vista(1440, 900, false);
 
   await ir('/login', 800);
-  await evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=admin&password=Admin123', redirect: 'manual' }).then((r) => r.status)`);
+  await evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=admin&password=${process.env.ADMIN_INITIAL_PASSWORD || 'Admin123'}&_csrf=' + encodeURIComponent(document.querySelector('input[name="_csrf"]').value), redirect: 'manual' }).then((r) => r.status)`);
 
   // ---------- Pedidos: menú pequeño dentro de una tabla ----------
   await ir('/admin/pedidos', 2200);

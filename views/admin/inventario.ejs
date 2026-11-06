@@ -63,6 +63,7 @@
                 <% } %>
 
                 <form method="POST" action="/admin/inventario/<%= planta.id_planta %>" class="inv-form" data-inv-form data-stock="<%= Math.max(0, planta.stock) %>" novalidate>
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="inv-accion">
                         <select name="accion" class="form-select form-select-sm" aria-label="Qué hacer con el stock de <%= planta.nombre %>">
                             <option value="agregar" data-icono="bi-plus-circle" data-tono="verde" data-detalle="Llegaron más plantas">Añadir al stock</option>

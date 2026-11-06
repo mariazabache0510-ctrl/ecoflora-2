@@ -198,17 +198,21 @@ async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar }
 // ---------- Ayudas de la app ----------
 
 async function crearUsuario(nombreUsuario) {
+  // Como un navegador: primero se abre /registro (da la cookie de sesión y el token CSRF) y luego se envía el formulario.
+  const pagina = await fetch(base + '/registro', { headers: { Accept: 'text/html' } });
+  const cookie = (pagina.headers.getSetCookie ? pagina.headers.getSetCookie() : []).map((c) => c.split(';')[0]).join('; ');
+  const token = ((await pagina.text()).match(/name="_csrf" value="([^"]+)"/) || [])[1] || '';
   await fetch(base + '/registro', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookie },
     redirect: 'manual',
-    body: new URLSearchParams({ nombre: 'Prueba Navegador', usuario: nombreUsuario, email: `${nombreUsuario}@ecoflora.test`, telefono: '3000000000', direccion: 'Calle 1', ciudad: 'Bogotá', password: 'clave12345', confirmar: 'clave12345' }).toString()
+    body: new URLSearchParams({ _csrf: token, nombre: 'Prueba Navegador', usuario: nombreUsuario, email: `${nombreUsuario}@ecoflora.test`, telefono: '3000000000', direccion: 'Calle 1', ciudad: 'Bogotá', password: 'clave12345', confirmar: 'clave12345' }).toString()
   });
 }
 
 async function entrar(n, nombreUsuario) {
   await n.ir('/login', 300);
-  await n.evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=${nombreUsuario}&password=clave12345', redirect: 'manual' }).then((r) => r.type)`);
+  await n.evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=${nombreUsuario}&password=clave12345&_csrf=' + encodeURIComponent(document.querySelector('input[name="_csrf"]').value), redirect: 'manual' }).then((r) => r.type)`);
 }
 
 const texto = (n, selector) => n.evaluar(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); return e ? e.textContent.trim().replace(/\\s+/g, ' ') : null; })()`);

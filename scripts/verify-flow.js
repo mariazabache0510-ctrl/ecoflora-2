@@ -1,4 +1,5 @@
 const base = process.env.BASE_URL || 'http://127.0.0.1:3000';
+const CLAVE_ADMIN = process.env.ADMIN_INITIAL_PASSWORD || 'Admin123'; // la de pruebas locales
 
 function assert(condition, message) {
   if (!condition) {
@@ -8,10 +9,13 @@ function assert(condition, message) {
   console.log('ok', message);
 }
 
+// El cliente imita a un navegador: guarda las cookies y el token CSRF de la sesión (lo lee de las páginas que
+// recibe) y lo agrega solo a cada POST. Con { sinCsrf: true } se envía SIN token (para probar que se rechaza).
 function createClient() {
   const jar = new Map();
-  return {
-    async request(method, urlPath, body) {
+  let token = null;
+  async function crudo(method, urlPath, body) {
+    {
       const headers = { Accept: 'text/html' };
       const cookie = [...jar.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
       if (cookie) headers.Cookie = cookie;
@@ -21,6 +25,7 @@ function createClient() {
         payload = new URLSearchParams(body).toString();
       }
       const response = await fetch(base + urlPath, { method, headers, body: payload, redirect: 'manual' });
+      const sesionAntes = jar.get('ecoflora.sid');
       const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
       setCookies.forEach((entry) => {
         const [pair] = entry.split(';');
@@ -30,8 +35,21 @@ function createClient() {
         if (!value) jar.delete(name);
         else jar.set(name, value);
       });
+      if (jar.get('ecoflora.sid') !== sesionAntes) token = null; // sesión nueva: el token anterior ya no sirve
       const text = await response.text();
+      const encontrado = text.match(/name="_csrf" value="([^"]+)"/) || text.match(/data-csrf="([^"]+)"/);
+      if (encontrado) token = encontrado[1];
       return { status: response.status, text, location: response.headers.get('location') };
+    }
+  }
+  return {
+    cookie: (nombre) => jar.get(nombre),
+    async request(method, urlPath, body, opciones = {}) {
+      if (method !== 'GET' && !opciones.sinCsrf) {
+        if (!token) await crudo('GET', '/login');
+        return crudo(method, urlPath, { ...(body || {}), _csrf: token });
+      }
+      return crudo(method, urlPath, body);
     }
   };
 }
@@ -140,7 +158,9 @@ async function main() {
   assert(duplicado.text.includes('ya están registrados'), 'rechaza usuario duplicado');
 
   const loginMal = await guest.request('POST', '/login', { usuario: 'clienteprueba', password: 'no-es' });
-  assert(loginMal.text.includes('Contraseña incorrecta'), 'rechaza una contraseña incorrecta');
+  assert(loginMal.text.includes('Usuario o contraseña incorrectos'), 'rechaza una contraseña incorrecta con el mensaje genérico');
+  const loginSinUsuario = await guest.request('POST', '/login', { usuario: 'nadie_existe_aqui', password: 'no-es' });
+  assert(loginSinUsuario.text.includes('Usuario o contraseña incorrectos') && !/no encontrado/i.test(loginSinUsuario.text), 'un usuario inexistente recibe el MISMO mensaje (no revela si existe)');
 
   const login = await follow(guest, 'POST', '/login', { usuario: 'clienteprueba', password: 'clave123' });
   assert(login.text.includes('Mi Panel'), 'login de cliente');
@@ -225,7 +245,7 @@ async function main() {
   assert(adminBloqueado.text.includes('Acceso no autorizado'), 'un visitante no entra al admin');
 
   const admin = createClient();
-  const panel = await follow(admin, 'POST', '/login', { usuario: 'admin', password: 'Admin123' });
+  const panel = await follow(admin, 'POST', '/login', { usuario: 'admin', password: CLAVE_ADMIN });
   assert(panel.text.includes('Panel de Administración'), 'login de administrador');
   assert(panel.text.includes('>22<'), 'el panel cuenta las 22 plantas');
   assert(panel.text.includes('data-contar'), 'el panel usa los contadores animados');
@@ -353,10 +373,18 @@ async function main() {
   const filaAdmin = usuarios.text.split('</tr>').find((fila) => fila.includes('>admin<'));
   const adminId = filaAdmin && filaAdmin.match(/\/admin\/usuarios\/(\d+)\/editar/);
   assert(adminId, 'se identifica la fila del administrador');
-  const propio = await follow(admin, 'GET', '/admin/usuarios/' + adminId[1] + '/eliminar');
+  const propio = await follow(admin, 'POST', '/admin/usuarios/' + adminId[1] + '/eliminar', {});
   assert(propio.text.includes('No puedes eliminar tu propia cuenta'), 'el admin no se elimina a sí mismo');
 
+  // Eliminar es POST con token: un enlace (GET) ya no borra nada y un POST sin token se rechaza.
+  assert(/<form[^>]*method="POST"[^>]*action="\/admin\/usuarios\/\d+\/eliminar"[^>]*data-confirmar/i.test(usuarios.text) && !/href="\/admin\/usuarios\/\d+\/eliminar"/.test(usuarios.text), 'eliminar usuario es un formulario POST con confirmación (ya no un enlace)');
   await follow(admin, 'GET', '/admin/usuarios/' + idUsuario[1] + '/eliminar');
+  assert((await admin.request('GET', '/admin/usuarios')).text.includes('clienteprueba'), 'un GET al enlace viejo de eliminar NO borra al usuario');
+  const sinToken = await admin.request('POST', '/admin/usuarios/' + idUsuario[1] + '/eliminar', {}, { sinCsrf: true });
+  assert(sinToken.status === 403, 'un POST de eliminar SIN token CSRF se rechaza (403)');
+  assert((await admin.request('GET', '/admin/usuarios')).text.includes('clienteprueba'), 'y el usuario sigue existiendo');
+
+  await follow(admin, 'POST', '/admin/usuarios/' + idUsuario[1] + '/eliminar', {});
   const usuarios3 = await admin.request('GET', '/admin/usuarios');
   assert(!usuarios3.text.includes('clienteprueba'), 'el admin elimina al cliente');
 

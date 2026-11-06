@@ -1,5 +1,5 @@
 <%# Cámara circular del inicio con rostro. La usan /login y /rostro; public/js/rostro.js la controla por los atributos data-rostro-*. %>
-<div class="rostro-camara" data-rostro-camara data-estado="inactivo">
+<div class="rostro-camara" data-rostro-camara data-estado="inactivo" data-csrf="<%= csrfToken %>">
     <div class="rostro-marco">
         <span class="rostro-anillo" aria-hidden="true"></span>
         <div class="rostro-circulo">

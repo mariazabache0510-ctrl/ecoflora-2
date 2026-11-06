@@ -30,7 +30,8 @@
                     <p class="text-muted mb-3">Ya puedes entrar con tu cámara desde la pantalla de ingreso. Si cambias de aspecto o falla seguido, vuelve a registrar tu rostro.</p>
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-ecoflora" data-rostro-reiniciar><i class="bi bi-arrow-repeat me-2"></i>Volver a registrar mi rostro</button>
-                        <form method="POST" action="/rostro/eliminar" onsubmit="return confirm('¿Borrar tu rostro de EcoFlora? Podrás volver a activarlo cuando quieras.');">
+                        <form method="POST" action="/rostro/eliminar" data-confirmar="¿Borrar tu rostro de EcoFlora? Podrás volver a activarlo cuando quieras.">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-trash3 me-2"></i>Desactivar y borrar mi rostro</button>
                         </form>
                     </div>

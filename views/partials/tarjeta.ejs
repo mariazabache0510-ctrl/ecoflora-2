@@ -29,6 +29,7 @@
             </div>
             <% if (planta.stock > 0) { %>
             <form method="POST" action="/carrito" class="tp-agregar" data-agregar>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="accion" value="agregar">
                 <input type="hidden" name="id_planta" value="<%= planta.id_planta %>">
                 <input type="hidden" name="cantidad" value="1">

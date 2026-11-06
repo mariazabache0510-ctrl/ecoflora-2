@@ -24,6 +24,18 @@ function crearLimitador({ max, ventanaMs }) {
       marcas.push(ahora);
       intentos.set(clave, marcas);
       return true;
+    },
+
+    // ¿Esa clave ya llegó al máximo? Solo mira: NO cuenta como un intento nuevo. Sirve para contar
+    // únicamente los intentos fallidos (el inicio de sesión con la contraseña correcta no gasta intentos).
+    excedido(clave, ahora = Date.now()) {
+      const marcas = (intentos.get(clave) || []).filter((marca) => ahora - marca < ventanaMs);
+      return marcas.length >= max;
+    },
+
+    // Borra los intentos de una clave (por ejemplo, cuando la persona por fin entra bien).
+    liberar(clave) {
+      intentos.delete(clave);
     }
   };
 }

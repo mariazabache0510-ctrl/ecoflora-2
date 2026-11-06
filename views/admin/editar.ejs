@@ -13,6 +13,7 @@
 
             <div class="form-tarjeta vidrio reveal" style="--i: 1">
                 <form action="/admin/usuarios/<%= usuario.id_usuario %>" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="mb-3">
                         <label class="form-label" for="nombre">Nombre completo</label>
                         <div class="campo"><i class="bi bi-person-vcard"></i><input type="text" id="nombre" name="nombre" class="form-control" value="<%= usuario.nombre %>" required></div>
@@ -52,10 +53,10 @@
                         <label class="form-label" for="password">Nueva contraseña</label>
                         <div class="campo con-ojo">
                             <i class="bi bi-lock"></i>
-                            <input type="password" id="password" name="password" class="form-control" autocomplete="new-password">
+                            <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" minlength="8">
                             <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
                         </div>
-                        <div class="form-text">Déjala vacía si no deseas cambiarla.</div>
+                        <div class="form-text">Déjala vacía si no deseas cambiarla. Si la cambias, mínimo 8 caracteres.</div>
                     </div>
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-tierra btn-lg"><i class="bi bi-check2-circle me-2"></i>Actualizar usuario</button>

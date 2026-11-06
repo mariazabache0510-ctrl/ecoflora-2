@@ -51,6 +51,7 @@
                         <td><%= formatDate(pedido.fecha_pedido) %></td>
                         <td>
                             <form method="POST" action="/admin/pedidos" class="d-flex gap-2">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                 <input type="hidden" name="id_pedido" value="<%= pedido.id_pedido %>">
                                 <select name="estado" class="form-select form-select-sm" style="width: 170px;" aria-label="Estado del pedido <%= pedido.id_pedido %>">
                                     <% ESTADOS.forEach(function(estado) { var marca = ICONOS_ESTADO[estado] || ['bi-circle', 'verde']; %>

@@ -9,6 +9,9 @@ const { registerRoutes } = require('./routes');
 const { contacto, whatsappDe } = require('./contacto');
 const { fechaColombia } = require('./mailer');
 const rostro = require('./rostro');
+const { NOMBRE_COOKIE, secretoDeSesion, opcionesCookie } = require('./entorno');
+const { protegerCsrf } = require('./csrf');
+const { encabezadosDeSeguridad, limpiarEntradas } = require('./seguridad');
 const {
   formatPrice,
   nl2br,
@@ -64,6 +67,9 @@ function createApp() {
   app.set('views', viewsDir);
   app.disable('x-powered-by');
 
+  // Encabezados de seguridad (CSP, HSTS en producción, anti-iframe...) en todas las respuestas.
+  app.use(encabezadosDeSeguridad());
+
   app.locals.formatPrice = formatPrice;
   app.locals.nl2br = nl2br;
   app.locals.excerpt = excerpt;
@@ -88,7 +94,10 @@ function createApp() {
     }
   });
 
-  app.use(express.urlencoded({ extended: true }));
+  // Los formularios del sitio son pequeños: 20 KB y 200 campos de sobra. (El JSON del rostro tiene su propio
+  // tope en src/rutas-rostro.js: 32 KB, y 5 descriptores de 128 números pesan menos de 10 KB.)
+  app.use(express.urlencoded({ extended: true, limit: '20kb', parameterLimit: 200 }));
+  app.use(limpiarEntradas());
 
   // Reconocimiento facial: la librería y sus 3 modelos salen de node_modules (no hay que descargar
   // nada a mano). Solo se sirven los archivos necesarios y quedan en la caché del navegador.
@@ -112,16 +121,15 @@ function createApp() {
     }
   }));
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'ecoflora-dev-secret',
+    name: NOMBRE_COOKIE,
+    secret: secretoDeSesion(),
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
       client: mongoose.connection.getClient()
     }),
     cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...opcionesCookie(),
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   }));
@@ -141,6 +149,10 @@ function createApp() {
     }
   });
 
+  // CSRF: reparte el token a las vistas y exige el token correcto en todo POST (va después de las
+  // variables de las vistas porque la página de rechazo también las usa).
+  app.use(protegerCsrf);
+
   app.use(async (req, res, next) => {
     if (!shouldRecord(req, res)) return next();
     try {
@@ -159,9 +171,16 @@ function createApp() {
   });
 
   app.use((error, req, res, next) => {
-    console.error(error);
     if (res.headersSent) return next(error);
-    res.status(500).send('Error interno del servidor.');
+    // Cuerpo demasiado grande o formulario mal formado: no es un fallo del servidor.
+    if (error && (error.type === 'entity.too.large' || error.type === 'parameters.too.many')) {
+      return res.status(413).send('Los datos enviados son demasiado grandes.');
+    }
+    if (error && error.type === 'entity.parse.failed') {
+      return res.status(400).send('La solicitud no es válida.');
+    }
+    console.error(error);
+    return res.status(500).send('Error interno del servidor.');
   });
 
   return app;

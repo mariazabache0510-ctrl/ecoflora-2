@@ -27,7 +27,7 @@ ECOFLORA - VIVERO WEB
    Cliente: http://localhost/ecoflora/usuario/panel.php
 
 5. CREDENCIALES DE PRUEBA
-   Admin:  usuario: admin  /  password: Admin123
+   Admin:  usuario: admin  /  la contraseña se define con ADMIN_INITIAL_PASSWORD (ver el README principal)
    Cliente: registrarse en /registro.php
 
 6. IMAGENES

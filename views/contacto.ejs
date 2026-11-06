@@ -27,6 +27,7 @@
                 <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
                 <% if (exito) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><%= exito %></div><% } %>
                 <form method="POST" action="/contacto">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" for="nombre">Nombre *</label>

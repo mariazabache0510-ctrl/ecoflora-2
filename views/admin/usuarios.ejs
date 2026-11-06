@@ -34,7 +34,10 @@
                         <td>
                             <a href="/admin/usuarios/<%= usuario.id_usuario %>/editar" class="btn btn-tierra btn-sm"><i class="bi bi-pencil"></i> Editar</a>
                             <% if (usuario.id_usuario !== sesion.id_usuario) { %>
-                            <a href="/admin/usuarios/<%= usuario.id_usuario %>/eliminar" class="btn btn-peligro btn-sm" onclick="return confirm('¿Seguro que deseas eliminar este usuario?');"><i class="bi bi-trash"></i> Eliminar</a>
+                            <form method="POST" action="/admin/usuarios/<%= usuario.id_usuario %>/eliminar" class="d-inline" data-confirmar="¿Seguro que deseas eliminar este usuario?">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <button type="submit" class="btn btn-peligro btn-sm"><i class="bi bi-trash"></i> Eliminar</button>
+                            </form>
                             <% } %>
                         </td>
                     </tr>

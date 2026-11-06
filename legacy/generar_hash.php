@@ -1,1 +1,2 @@
-<?php echo password_hash("Admin123", PASSWORD_DEFAULT); ?>
+<?php // Uso: php generar_hash.php "tu-contraseña"
+echo password_hash($argv[1] ?? "", PASSWORD_DEFAULT); ?>

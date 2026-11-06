@@ -18,6 +18,7 @@ const { RostroUsuario, Usuario } = require('../src/models');
 const rostro = require('../src/rostro');
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:3000';
+const CLAVE_ADMIN = process.env.ADMIN_INITIAL_PASSWORD || 'Admin123'; // la de pruebas locales
 
 function assert(condition, message) {
   if (!condition) {
@@ -31,13 +32,27 @@ const dormir = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 // ---------- Cliente HTTP con cookies ----------
 
+// Imita a un navegador: guarda cookies y el token CSRF de la sesión (lo lee de la última página) y lo manda en cada
+// POST: en el encabezado X-CSRF-Token si es JSON, o en el campo _csrf si es un formulario. La opción sinCsrf: true
+// lo omite (para probar que el servidor rechaza un POST sin token).
 function crearCliente() {
   const jar = new Map();
-  async function pedir(metodo, ruta, { json, form, ip, crudo } = {}) {
+  let token = null;
+  async function pedir(metodo, ruta, opciones = {}) {
+    if (metodo !== 'GET' && !opciones.sinCsrf) {
+      if (!token) await enviar('GET', '/login', { ip: opciones.ip });
+      if (opciones.form) opciones = { ...opciones, form: { ...opciones.form, _csrf: token } };
+      else if (!opciones.form && opciones.json === undefined && opciones.crudo === undefined) opciones = { ...opciones, form: { _csrf: token } };
+      else opciones = { ...opciones, encabezados: { 'X-CSRF-Token': token } };
+    }
+    return enviar(metodo, ruta, opciones);
+  }
+  async function enviar(metodo, ruta, { json, form, ip, crudo, encabezados } = {}) {
     const headers = { Accept: json !== undefined || crudo !== undefined ? 'application/json' : 'text/html' };
     const cookie = [...jar.entries()].map(([nombre, valor]) => `${nombre}=${valor}`).join('; ');
     if (cookie) headers.Cookie = cookie;
     if (ip) headers['X-Forwarded-For'] = ip;
+    Object.assign(headers, encabezados || {});
     let cuerpo;
     if (json !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -50,6 +65,7 @@ function crearCliente() {
       cuerpo = new URLSearchParams(form).toString();
     }
     const respuesta = await fetch(base + ruta, { method: metodo, headers, body: cuerpo, redirect: 'manual' });
+    const sesionAntes = jar.get('ecoflora.sid');
     (respuesta.headers.getSetCookie ? respuesta.headers.getSetCookie() : []).forEach((entrada) => {
       const [par] = entrada.split(';');
       const i = par.indexOf('=');
@@ -58,12 +74,15 @@ function crearCliente() {
       if (!valor) jar.delete(nombre);
       else jar.set(nombre, valor);
     });
+    if (jar.get('ecoflora.sid') !== sesionAntes) token = null; // sesión nueva: el token anterior ya no sirve
     const texto = await respuesta.text();
+    const encontrado = texto.match(/name="_csrf" value="([^"]+)"/) || texto.match(/data-csrf="([^"]+)"/);
+    if (encontrado) token = encontrado[1];
     let datos = null;
     try { datos = JSON.parse(texto); } catch (error) { datos = null; }
     return { status: respuesta.status, texto, datos, location: respuesta.headers.get('location') };
   }
-  return { pedir };
+  return { pedir, cookie: (nombre) => jar.get(nombre) };
 }
 
 // ---------- Descriptores sintéticos ----------
@@ -325,10 +344,10 @@ async function parte3({ persona, usuario }) {
 
   // Admin: misma captura que a un cliente le sirve (0.48) pero al admin no (umbral 0.45).
   const admin = crearCliente();
-  const entrarAdmin = await admin.pedir('POST', '/login', { form: { usuario: 'admin', password: 'Admin123' } });
+  const entrarAdmin = await admin.pedir('POST', '/login', { form: { usuario: 'admin', password: CLAVE_ADMIN } });
   assert(entrarAdmin.status === 302, 'el admin entra con su contraseña');
   const personaAdmin = personaSintetica(404);
-  const adminActivo = await activarRostro(admin, personaAdmin, 41, 'Admin123');
+  const adminActivo = await activarRostro(admin, personaAdmin, 41, CLAVE_ADMIN);
   assert(adminActivo.status === 200, 'el admin también puede activar su rostro');
   await admin.pedir('GET', '/logout');
   const idAdmin = (await Usuario.findOne({ usuario: 'admin' })).id_usuario;
@@ -393,8 +412,8 @@ async function parte3({ persona, usuario }) {
   // --- El admin elimina una cuenta: se borra también su rostro ---
   const idCuatro = (await Usuario.findOne({ usuario: 'rostro_cuatro' })).id_usuario;
   const admin2 = crearCliente();
-  await admin2.pedir('POST', '/login', { form: { usuario: 'admin', password: 'Admin123' } });
-  await admin2.pedir('GET', `/admin/usuarios/${idCuatro}/eliminar`);
+  await admin2.pedir('POST', '/login', { form: { usuario: 'admin', password: CLAVE_ADMIN } });
+  await admin2.pedir('POST', `/admin/usuarios/${idCuatro}/eliminar`, {});
   assert((await Usuario.countDocuments({ id_usuario: idCuatro })) === 0, 'el admin eliminó la cuenta');
   assert((await RostroUsuario.countDocuments({ id_usuario: idCuatro })) === 0, 'y su rostro se borró con ella');
 

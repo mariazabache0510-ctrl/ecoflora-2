@@ -11,8 +11,12 @@ services:
         value: "22"
       - key: MONGODB_URI
         sync: false
+      - key: NODE_ENV
+        value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: ADMIN_INITIAL_PASSWORD
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: CONTACT_TO_EMAIL

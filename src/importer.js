@@ -13,7 +13,29 @@ const {
   nextId,
   syncCounter
 } = require('./models');
-const { hashPassword } = require('./passwords');
+const { hashPassword, verifyPassword, CLAVE_MINIMA } = require('./passwords');
+const { esProduccion } = require('./entorno');
+
+// Contraseña de fábrica del admin: aparece en el código público, así que NUNCA debe usarse en producción.
+// Solo se usa en tu computador (desarrollo y pruebas) cuando no defines ADMIN_INITIAL_PASSWORD.
+const CLAVE_DE_FABRICA = 'Admin123';
+const ALFABETO_CLAVE = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+// ¿Esta fila del script SQL es el admin con la clave de fábrica? Esa fila no se importa: el admin se crea
+// aparte (ensureAdmin) con una clave que tú defines. Un script propio con otra clave sí se importa tal cual.
+async function esAdminDeFabrica(row) {
+  return String(row.usuario || '').trim().toLowerCase() === 'admin'
+    && Boolean(row.password)
+    && verifyPassword(CLAVE_DE_FABRICA, String(row.password));
+}
+
+async function sinAdminDeFabrica(rows) {
+  const permitidas = [];
+  for (const row of rows) {
+    if (!(await esAdminDeFabrica(row))) permitidas.push(row);
+  }
+  return permitidas;
+}
 
 const COLUMN_ORDERS = {
   usuarios: ['id_usuario', 'nombre', 'usuario', 'email', 'password', 'telefono', 'direccion', 'ciudad', 'rol', 'fecha_registro'],
@@ -253,7 +275,8 @@ async function applyDump(bucket, { conservarStock = false } = {}) {
 
   if (bucket.usuarios) {
     assignIds(bucket.usuarios, 'id_usuario');
-    const rows = dedupe(bucket.usuarios, 'id_usuario').map((row) => ({
+    const filasUsuarios = await sinAdminDeFabrica(dedupe(bucket.usuarios, 'id_usuario'));
+    const rows = filasUsuarios.map((row) => ({
       id_usuario: Number(row.id_usuario),
       nombre: text(row.nombre),
       usuario: text(row.usuario),
@@ -386,6 +409,7 @@ async function mergeUsers(rows) {
     const email = text(row.email).trim();
     const password = text(row.password);
     if (!usuario || !email || !password) continue;
+    if (await esAdminDeFabrica(row)) continue;
     const exists = await Usuario.findOne({ $or: [{ usuario }, { email }] }).collation(collation).lean();
     if (exists) continue;
     await Usuario.create({
@@ -420,22 +444,72 @@ async function syncCatalog() {
   return true;
 }
 
+function generarClave(largo = 16) {
+  return Array.from({ length: largo }, () => ALFABETO_CLAVE[crypto.randomInt(ALFABETO_CLAVE.length)]).join('');
+}
+
+// Contraseña con la que nace el admin (solo se usa si el admin todavía no existe):
+//  1. ADMIN_INITIAL_PASSWORD, si está definida (mínimo 8 caracteres);
+//  2. en producción sin esa variable: una aleatoria, que se muestra UNA sola vez en el log;
+//  3. en tu computador: la de fábrica, para que las pruebas funcionen.
+function claveInicialDelAdmin() {
+  const definida = String(process.env.ADMIN_INITIAL_PASSWORD || '').trim();
+  if (definida.length >= CLAVE_MINIMA) return { clave: definida, origen: 'variable' };
+  if (definida) console.warn(`ADMIN_INITIAL_PASSWORD tiene menos de ${CLAVE_MINIMA} caracteres: se ignora.`);
+  if (esProduccion()) return { clave: generarClave(), origen: 'generada' };
+  return { clave: CLAVE_DE_FABRICA, origen: 'desarrollo' };
+}
+
 async function ensureAdmin() {
   const existing = await Usuario.findOne({ usuario: 'admin' }).collation({ locale: 'es', strength: 2 });
   if (existing) return existing;
+  const { clave, origen } = claveInicialDelAdmin();
   const id = await nextId('usuarios');
-  return Usuario.create({
+  const admin = await Usuario.create({
     id_usuario: id,
     nombre: 'Administrador EcoFlora',
     usuario: 'admin',
     email: 'admin@ecoflora.com',
-    password: await hashPassword('Admin123'),
+    password: await hashPassword(clave),
     telefono: '3000000000',
     direccion: 'Calle Principal 123',
     ciudad: 'Bogotá',
     rol: 'admin',
     fecha_registro: new Date()
   });
+  if (origen === 'generada') {
+    console.warn([
+      '',
+      '==================================================================',
+      ' Se creó el usuario "admin" con una contraseña ALEATORIA:',
+      '',
+      `     ${clave}`,
+      '',
+      ' Anótala ahora: NO se vuelve a mostrar. Entra al panel y cámbiala',
+      ' (Gestionar Usuarios > Editar). Para elegirla tú, define la variable',
+      ' ADMIN_INITIAL_PASSWORD antes de crear la base de datos.',
+      '=================================================================='
+    ].join('\n'));
+  }
+  return admin;
+}
+
+// Al arrancar en producción: avisa a gritos si el admin sigue con la contraseña de fábrica (es pública).
+// Devuelve true si la advertencia se mostró.
+async function advertirSiAdminTieneClaveDeFabrica() {
+  const admin = await Usuario.findOne({ usuario: 'admin' }).collation({ locale: 'es', strength: 2 }).lean();
+  if (!admin || !(await verifyPassword(CLAVE_DE_FABRICA, admin.password))) return false;
+  console.warn([
+    '',
+    '##################################################################',
+    '# ¡ATENCIÓN DE SEGURIDAD!',
+    `# El usuario "admin" sigue con la contraseña de fábrica (${CLAVE_DE_FABRICA}).`,
+    '# Esa contraseña es PÚBLICA: cualquiera puede entrar al panel.',
+    '# Cámbiala AHORA: entra como admin > Gestionar Usuarios > Editar',
+    '# (el botón del admin) > Nueva contraseña (mínimo 8 caracteres).',
+    '##################################################################'
+  ].join('\n'));
+  return true;
 }
 
 async function importIfEmpty() {
@@ -452,6 +526,7 @@ module.exports = {
   parseSqlDump,
   importFile,
   ensureAdmin,
+  advertirSiAdminTieneClaveDeFabrica,
   importIfEmpty,
   syncCatalog,
   categoryIcon

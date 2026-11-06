@@ -14,7 +14,9 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    npm start
 
    La primera vez, si la base está vacía, se cargan las categorías y
-   plantas de ecoflora_db.sql y se crea el administrador.
+   plantas de ecoflora_db.sql y se crea el administrador. La contraseña
+   inicial del admin se define con la variable ADMIN_INITIAL_PASSWORD
+   (mínimo 8 caracteres); mira la sección 9.
 
 3. IMPORTAR UN VOLCADO SQL
    Para sustituir los datos con tu script de phpMyAdmin:
@@ -26,19 +28,22 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    carrito, pedidos, pedido_detalle, historial_navegacion y contactos.
    Las tablas que vengan en el archivo reemplazan esa colección.
    Los hashes de contraseña de PHP ($2y$) siguen siendo válidos.
-   Si no existe el usuario admin, se crea con la clave Admin123.
+   Si no existe el usuario admin, se crea con ADMIN_INITIAL_PASSWORD (ver
+   sección 9). El admin que trae el script de ejemplo no se importa.
 
 4. ACCESO
    Inicio:    http://localhost:3000/
    Catálogo:  http://localhost:3000/catalogo
-   Admin:     usuario admin  /  contraseña Admin123
+   Admin:     usuario admin  /  la contraseña de ADMIN_INITIAL_PASSWORD
+              (sección 9; la contraseña nunca se escribe en este archivo)
    Cliente:   regístrate en /registro
 
 5. RENDER
    El servicio web está descrito en render.yaml.
    MongoDB no viene incluido en Render: crea un cluster en MongoDB Atlas
    y define la variable MONGODB_URI en el servicio.
-   SESSION_SECRET se genera sola al desplegar el blueprint.
+   SESSION_SECRET se genera sola al desplegar el blueprint. En producción
+   (NODE_ENV=production) el servidor NO arranca sin ella.
    El servidor escucha en 0.0.0.0 y el puerto PORT.
 
 6. CONTACTO POR CORREO Y WHATSAPP
@@ -129,3 +134,42 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    (rápido) o el procesador (lento). Los tiempos y tamaños se ajustan en
    la constante ETAPA de public/js/rostro.js y los umbrales de parpadeo y
    giro en AJUSTES de public/js/rostro-vida.js.
+
+9. SEGURIDAD
+   Variables de entorno (local en .env, producción en Render > Environment;
+   NUNCA se suben al repositorio):
+   - SESSION_SECRET: firma la cookie de sesión. En producción es obligatoria
+     (sin ella el servidor no arranca). Genera una con:
+     node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   - NODE_ENV=production: activa la cookie solo-https, HSTS y las
+     comprobaciones de arranque.
+   - ADMIN_INITIAL_PASSWORD: contraseña con la que se CREA el usuario admin
+     (mínimo 8 caracteres). Solo se usa si el admin todavía no existe. Si en
+     producción no la defines, se genera una aleatoria y se muestra UNA sola
+     vez en el log del arranque. Si el admin ya existe, cambia su contraseña
+     desde el panel: Gestionar Usuarios > Editar > Nueva contraseña.
+     Al arrancar en producción, si el admin sigue con la contraseña de
+     fábrica de versiones anteriores, el log muestra una advertencia clara.
+
+   Qué protege el sitio:
+   - Login con contraseña: 5 intentos fallidos cada 10 minutos por IP+usuario
+     y 10 por usuario; un solo mensaje ("Usuario o contraseña incorrectos") y
+     el mismo tiempo de respuesta exista o no el usuario.
+   - Sesión: cookie "ecoflora.sid" (httpOnly, SameSite=Lax y Secure en
+     producción), con identificador nuevo en cada inicio de sesión y borrada
+     al salir. Contraseñas nuevas: mínimo 8 caracteres.
+   - CSRF: todo POST lleva un token por sesión (campo oculto _csrf, o el
+     encabezado X-CSRF-Token en el JS del rostro). Quitar del carrito y
+     eliminar usuarios son POST con confirmación, no enlaces.
+   - Encabezados (helmet): política de contenido (CSP) que solo permite los
+     scripts, estilos, tipografías e imágenes que el sitio usa, no permite
+     meter el sitio en otra página y activa HSTS en producción. Por eso las
+     vistas no usan onclick="", onsubmit="" ni "javascript:": usa los
+     atributos data-confirmar, data-volver y data-respaldo (public/js/app.js)
+     y, para un script en línea, nonce="<%= cspNonce %>". Si cambias la
+     versión de Bootstrap en las vistas, actualiza src/seguridad.js.
+   - Entradas: formularios de hasta 20 KB, JSON del rostro de hasta 32 KB y
+     limpieza de claves con "$" o "." (express-mongo-sanitize).
+   - Pruebas: MONGODB_URI=mongodb://127.0.0.1:27018/ecoflora node scripts/verify-seguridad.js
+     (necesita MongoDB LOCAL encendido; levanta sus propias copias de la app en los
+     puertos 3201 y 3202 y borra las bases temporales que crea).

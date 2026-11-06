@@ -168,7 +168,7 @@ async function main() {
   await vista(1440, 900, false);
 
   await ir('/login', 800);
-  await evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=admin&password=Admin123', redirect: 'manual' }).then((r) => r.status)`);
+  await evaluar(`fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'usuario=admin&password=${process.env.ADMIN_INITIAL_PASSWORD || 'Admin123'}&_csrf=' + encodeURIComponent(document.querySelector('input[name="_csrf"]').value), redirect: 'manual' }).then((r) => r.status)`);
 
   // ---------- Panel: el acceso al inventario ----------
   await ir('/admin', 2200);

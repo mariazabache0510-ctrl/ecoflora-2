@@ -23,6 +23,7 @@
 
                 <div id="login-panel-clave" role="tabpanel" aria-labelledby="login-tab-clave" data-login-panel="clave">
                     <form method="POST" action="/login">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <div class="mb-3">
                             <label class="form-label" for="usuario">Usuario o Email</label>
                             <div class="campo">

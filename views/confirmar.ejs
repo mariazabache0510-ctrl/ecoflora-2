@@ -10,6 +10,7 @@
             <div class="form-tarjeta vidrio reveal">
                 <h2 class="h4 fw-bold mb-3"><i class="bi bi-geo-alt me-2 text-success"></i>Datos de envío</h2>
                 <form method="POST" action="/confirmar-pedido">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="mb-3">
                         <label class="form-label" for="direccion">Dirección completa *</label>
                         <textarea id="direccion" name="direccion" class="form-control" rows="2" required></textarea>
