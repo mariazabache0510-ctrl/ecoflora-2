@@ -10,6 +10,7 @@ const {
   Pedido,
   Historial,
   Contacto,
+  RostroUsuario,
   nextId,
   syncCounter
 } = require('./models');
@@ -512,6 +513,15 @@ async function advertirSiAdminTieneClaveDeFabrica() {
   return true;
 }
 
+// La cuenta de administración entra solo con contraseña: si alguna cuenta admin tiene un rostro guardado
+// (de cuando se permitía), se borra al arrancar. Devuelve cuántos rostros se borraron.
+async function borrarRostrosDeAdmins() {
+  const admins = await Usuario.find({ rol: 'admin' }, { id_usuario: 1 }).lean();
+  if (!admins.length) return 0;
+  const resultado = await RostroUsuario.deleteMany({ id_usuario: { $in: admins.map((admin) => admin.id_usuario) } });
+  return resultado.deletedCount || 0;
+}
+
 async function importIfEmpty() {
   const count = await Categoria.countDocuments();
   if (count > 0) return false;
@@ -527,6 +537,7 @@ module.exports = {
   importFile,
   ensureAdmin,
   advertirSiAdminTieneClaveDeFabrica,
+  borrarRostrosDeAdmins,
   importIfEmpty,
   syncCatalog,
   categoryIcon

@@ -9,13 +9,14 @@
 //   MONGODB_URI=mongodb://127.0.0.1:27018/ecoflora_rostro \
 //   BASE_URL=http://127.0.0.1:3000 node scripts/verify-face.js
 // La app debe haberse encendido con las MISMAS variables FACE_ENCRYPTION_KEY y MONGODB_URI, y con
-// FACE_MATCH_THRESHOLD=0.5 (o sin definir) y sin FACE_MATCH_THRESHOLD_ADMIN, porque las pruebas
-// del umbral dan por hecho 0.5 para clientes y 0.45 para el admin.
+// FACE_MATCH_THRESHOLD=0.5 (o sin definir), porque las pruebas del umbral dan por hecho 0.5.
+// La cuenta admin entra solo con contraseña: aquí se comprueba que el servidor no le acepta el rostro.
 // Los límites de intentos viven en la memoria de la app: para repetir el script apaga y enciende la app.
 
 const { connect, disconnect } = require('../src/db');
 const { RostroUsuario, Usuario } = require('../src/models');
 const rostro = require('../src/rostro');
+const { borrarRostrosDeAdmins } = require('../src/importer');
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const CLAVE_ADMIN = process.env.ADMIN_INITIAL_PASSWORD || 'Admin123'; // la de pruebas locales
@@ -335,36 +336,70 @@ async function parte3({ persona, usuario }) {
   const corto = await loginRostro('rostro_uno', [0.1, 0.2], { ip: '10.1.1.1' });
   assert(corto.respuesta.status === 400, 'un descriptor de tamaño incorrecto se rechaza');
 
-  // --- Umbral configurable y más estricto para el admin ---
+  // --- Umbral configurable ---
   const guardadosUno = await guardadosDe(usuario.id_usuario);
   const cerca = capturaADistancia(persona, guardadosUno, 0.4);
   const lejos = capturaADistancia(persona, guardadosUno, 0.56, 6000);
   assert((await loginRostro('rostro_uno', cerca.candidata, { ip: '10.1.1.1' })).respuesta.status === 200, `a distancia ${cerca.d.toFixed(2)} (bajo el umbral 0.5) entra`);
   assert((await loginRostro('rostro_uno', lejos.candidata, { ip: '10.1.1.1' })).respuesta.status === 401, `a distancia ${lejos.d.toFixed(2)} (sobre el umbral 0.5) no entra`);
 
-  // Admin: misma captura que a un cliente le sirve (0.48) pero al admin no (umbral 0.45).
+  // --- La cuenta admin entra SOLO con contraseña (el rostro es para clientes) ---
   const admin = crearCliente();
   const entrarAdmin = await admin.pedir('POST', '/login', { form: { usuario: 'admin', password: CLAVE_ADMIN } });
   assert(entrarAdmin.status === 302, 'el admin entra con su contraseña');
-  const personaAdmin = personaSintetica(404);
-  const adminActivo = await activarRostro(admin, personaAdmin, 41, CLAVE_ADMIN);
-  assert(adminActivo.status === 200, 'el admin también puede activar su rostro');
-  await admin.pedir('GET', '/logout');
   const idAdmin = (await Usuario.findOne({ usuario: 'admin' })).id_usuario;
-  const guardadosAdmin = await guardadosDe(idAdmin);
-  const casiAdmin = capturaADistancia(personaAdmin, guardadosAdmin, 0.48, 7000);
-  assert(rostro.umbral('admin') < rostro.umbral('cliente'), 'el umbral del admin es más estricto que el de clientes');
-  const adminRechazado = await loginRostro('admin', casiAdmin.candidata);
-  assert(adminRechazado.respuesta.status === 401, `el admin NO entra con distancia ${casiAdmin.d.toFixed(2)} (que a un cliente sí le serviría)`);
-  const adminEntra = await loginRostro('admin', captura(personaAdmin, 81));
-  assert(adminEntra.respuesta.status === 200 && adminEntra.respuesta.datos.destino === '/admin', 'el admin entra con su rostro y va al panel');
-  assert((await adminEntra.cliente.pedir('GET', '/admin')).status === 200, 'la sesión del admin da acceso al panel');
-  // Con la distancia que al admin no le sirve, otra cuenta de cliente sí entra.
+  assert(rostro.rolPermiteRostro('admin') === false && rostro.rolPermiteRostro('cliente') === true, 'la política: el rostro es solo para clientes');
+
+  // El servidor rechaza activar el rostro de un admin (aunque salte la pantalla y llame directo).
+  const adminAutoriza = await admin.pedir('POST', '/rostro/autorizar', { json: { clave: CLAVE_ADMIN, consentimiento: true } });
+  assert(adminAutoriza.status === 403 && adminAutoriza.datos.codigo === 'solo_contrasena', 'el servidor no deja al admin autorizar el rostro');
+  const adminDesafio = await admin.pedir('POST', '/rostro/desafio', { json: {} });
+  assert(adminDesafio.status === 403 && adminDesafio.datos.codigo === 'solo_contrasena', 'ni pedir el reto de registro');
+  const adminRegistra = await admin.pedir('POST', '/rostro/registro', { json: { desafio: 'a'.repeat(32), descriptores: [captura(persona, 1), captura(persona, 2), captura(persona, 3)] } });
+  assert(adminRegistra.status === 403 && adminRegistra.datos.codigo === 'solo_contrasena', 'ni guardar un rostro');
+  assert((await RostroUsuario.countDocuments({ id_usuario: idAdmin })) === 0, 'no queda ningún rostro del admin guardado');
+
+  // La pantalla /rostro le explica por qué, sin formulario ni cámara; el menú del admin no ofrece el rostro.
+  const paginaAdmin = await admin.pedir('GET', '/rostro');
+  assert(paginaAdmin.status === 200 && paginaAdmin.texto.includes('entra solo con contraseña'), 'la pantalla del rostro le explica al admin que entra solo con contraseña');
+  assert(!paginaAdmin.texto.includes('data-rostro-registro') && !paginaAdmin.texto.includes('/js/rostro.js'), 'y no muestra formulario ni carga la cámara');
+  const panelAdmin = await admin.pedir('GET', '/admin');
+  assert(panelAdmin.status === 200 && !panelAdmin.texto.includes('href="/rostro"'), 'el menú del admin ya no ofrece "Inicio con rostro"');
+  assert((await admin.pedir('GET', '/usuario/perfil')).status !== 200, 'el admin no ve el perfil de cliente (donde se activa el rostro)');
+
+  // Aunque hubiera un rostro viejo guardado para el admin, NO sirve para entrar y la respuesta no delata nada.
+  const personaAdmin = personaSintetica(404);
+  await RostroUsuario.create({
+    id_usuario: idAdmin,
+    descriptores: [captura(personaAdmin, 41), captura(personaAdmin, 42), captura(personaAdmin, 43)].map(rostro.cifrar),
+    consentimiento_fecha: new Date(),
+    consentimiento_version: rostro.VERSION_CONSENTIMIENTO
+  });
+  const adminViejo = await loginRostro('admin', captura(personaAdmin, 44), { ip: '10.2.3.2' });
+  const sinCuenta = await loginRostro('no_existe_para_nada', captura(personaAdmin, 45), { ip: '10.2.3.2' });
+  assert(adminViejo.desafio.status === 404 && JSON.stringify(adminViejo.desafio.datos) === JSON.stringify(sinCuenta.desafio.datos), 'con un rostro viejo guardado, el admin tampoco recibe reto (misma respuesta que una cuenta inexistente)');
+  const adminComprueba = await crearCliente().pedir('POST', '/login/rostro/comprobar', { json: { usuario: 'admin' }, ip: '10.2.3.3' });
+  assert(adminComprueba.status === 404 && JSON.stringify(adminComprueba.datos) === JSON.stringify(sinCuenta.desafio.datos), 'la comprobación tampoco delata que sea una cuenta admin');
+  const adminDirecto = await crearCliente().pedir('POST', '/login/rostro', { json: { usuario: 'admin', desafio: 'b'.repeat(32), descriptor: captura(personaAdmin, 46) }, ip: '10.2.3.4' });
+  assert(adminDirecto.status !== 200, 'enviar el rostro directo al servidor (sin pasar por la cámara) tampoco abre la cuenta admin');
+  // Se borra al arrancar la app (y no toca a los clientes).
+  const borrados = await borrarRostrosDeAdmins();
+  assert(borrados === 1 && (await RostroUsuario.countDocuments({ id_usuario: idAdmin })) === 0, 'al arrancar, el rostro viejo de una cuenta admin se borra');
+  assert((await RostroUsuario.countDocuments({ id_usuario: usuario.id_usuario })) === 1, 'y los rostros de los clientes siguen ahí');
+  assert(await borrarRostrosDeAdmins() === 0, 'repetir la limpieza no hace nada más');
+
+  // Ascender a una cuenta a admin borra su rostro.
   const cuatro = await crearCuenta('rostro_cuatro');
-  await activarRostro(cuatro.cliente, personaAdmin, 41);
-  const guardadosCuatro = await guardadosDe((await Usuario.findOne({ usuario: 'rostro_cuatro' })).id_usuario);
-  const casiCliente = capturaADistancia(personaAdmin, guardadosCuatro, 0.48, 8000);
-  assert((await loginRostro('rostro_cuatro', casiCliente.candidata)).respuesta.status === 200, 'la misma distancia 0.48 sí sirve para un cliente');
+  await activarRostro(cuatro.cliente, personaSintetica(414), 41);
+  const idCuatro = (await Usuario.findOne({ usuario: 'rostro_cuatro' })).id_usuario;
+  assert((await RostroUsuario.countDocuments({ id_usuario: idCuatro })) === 1, 'una cuenta cliente tiene su rostro activo');
+  const ascender = await admin.pedir('POST', `/admin/usuarios/${idCuatro}`, { form: { nombre: 'Rostro Cuatro', usuario: 'rostro_cuatro', email: 'rostro_cuatro@ecoflora.test', telefono: '3000000000', direccion: 'Calle 1', ciudad: 'Villavicencio', rol: 'admin' } });
+  assert(ascender.status === 302 && (await Usuario.findOne({ id_usuario: idCuatro })).rol === 'admin', 'el admin asciende a esa cuenta');
+  assert((await RostroUsuario.countDocuments({ id_usuario: idCuatro })) === 0, 'al volverse admin se borra su rostro');
+  await admin.pedir('POST', `/admin/usuarios/${idCuatro}`, { form: { nombre: 'Rostro Cuatro', usuario: 'rostro_cuatro', email: 'rostro_cuatro@ecoflora.test', telefono: '3000000000', direccion: 'Calle 1', ciudad: 'Villavicencio', rol: 'cliente' } });
+  assert((await Usuario.findOne({ id_usuario: idCuatro })).rol === 'cliente', 'se deja otra vez como cliente para seguir con las pruebas');
+  assert((await activarRostro(cuatro.cliente, personaSintetica(414), 51)).status === 200, 'y como cliente vuelve a poder activar su rostro');
+  await admin.pedir('GET', '/logout');
 
   // --- Carrito de invitado ---
   const invitado = crearCliente();
@@ -410,7 +445,7 @@ async function parte3({ persona, usuario }) {
   assert(trasBorrar.desafio.status === 404, 'tras borrarlo ya no se puede entrar con rostro');
 
   // --- El admin elimina una cuenta: se borra también su rostro ---
-  const idCuatro = (await Usuario.findOne({ usuario: 'rostro_cuatro' })).id_usuario;
+  assert((await RostroUsuario.countDocuments({ id_usuario: idCuatro })) === 1, 'la cuenta a eliminar tiene su rostro guardado');
   const admin2 = crearCliente();
   await admin2.pedir('POST', '/login', { form: { usuario: 'admin', password: CLAVE_ADMIN } });
   await admin2.pedir('POST', `/admin/usuarios/${idCuatro}/eliminar`, {});
@@ -418,20 +453,17 @@ async function parte3({ persona, usuario }) {
   assert((await RostroUsuario.countDocuments({ id_usuario: idCuatro })) === 0, 'y su rostro se borró con ella');
 
   // --- Configuración: umbral y clave ---
-  const guardado = { clave: process.env.FACE_ENCRYPTION_KEY, umbral: process.env.FACE_MATCH_THRESHOLD, admin: process.env.FACE_MATCH_THRESHOLD_ADMIN };
+  const guardado = { clave: process.env.FACE_ENCRYPTION_KEY, umbral: process.env.FACE_MATCH_THRESHOLD };
   delete process.env.FACE_MATCH_THRESHOLD;
-  delete process.env.FACE_MATCH_THRESHOLD_ADMIN;
-  assert(rostro.umbral('cliente') === 0.5 && Math.abs(rostro.umbral('admin') - 0.45) < 1e-9, 'sin configurar: 0.5 para clientes y 0.45 para admin');
+  assert(rostro.umbral() === 0.5, 'sin configurar el umbral es 0.5');
   process.env.FACE_MATCH_THRESHOLD = '0,42';
-  assert(rostro.umbral('cliente') === 0.42, 'FACE_MATCH_THRESHOLD acepta coma decimal');
+  assert(rostro.umbral() === 0.42, 'FACE_MATCH_THRESHOLD acepta coma decimal');
   process.env.FACE_MATCH_THRESHOLD = '0.95';
-  assert(rostro.umbral('cliente') === 0.7, 'un umbral demasiado permisivo se limita a 0.7');
+  assert(rostro.umbral() === 0.7, 'un umbral demasiado permisivo se limita a 0.7');
   process.env.FACE_MATCH_THRESHOLD = '0.05';
-  assert(rostro.umbral('cliente') === 0.2, 'un umbral demasiado estricto se limita a 0.2');
+  assert(rostro.umbral() === 0.2, 'un umbral demasiado estricto se limita a 0.2');
   process.env.FACE_MATCH_THRESHOLD = 'abc';
-  assert(rostro.umbral('cliente') === 0.5, 'un valor que no es número vuelve al 0.5');
-  process.env.FACE_MATCH_THRESHOLD_ADMIN = '0.3';
-  assert(rostro.umbral('admin') === 0.3, 'FACE_MATCH_THRESHOLD_ADMIN manda para el admin');
+  assert(rostro.umbral() === 0.5, 'un valor que no es número vuelve al 0.5');
   process.env.FACE_ENCRYPTION_KEY = 'corta';
   assert(rostro.disponible() === false, 'una clave de menos de 16 caracteres deja la función apagada');
   let lanzo = false;
@@ -439,12 +471,11 @@ async function parte3({ persona, usuario }) {
   assert(lanzo, 'sin una clave válida NUNCA se guarda un rostro sin cifrar');
   delete process.env.FACE_ENCRYPTION_KEY;
   assert(rostro.disponible() === false, 'sin FACE_ENCRYPTION_KEY la función queda apagada');
-  Object.entries({ FACE_ENCRYPTION_KEY: guardado.clave, FACE_MATCH_THRESHOLD: guardado.umbral, FACE_MATCH_THRESHOLD_ADMIN: guardado.admin })
+  Object.entries({ FACE_ENCRYPTION_KEY: guardado.clave, FACE_MATCH_THRESHOLD: guardado.umbral })
     .forEach(([nombre, valor]) => { if (valor === undefined) delete process.env[nombre]; else process.env[nombre] = valor; });
 
-  // El admin no debe quedar con rostro de prueba guardado.
-  await RostroUsuario.deleteOne({ id_usuario: idAdmin });
-  assert((await RostroUsuario.countDocuments({ id_usuario: idAdmin })) === 0, 'se limpió el rostro de prueba del admin');
+  // El admin no debe quedar con ningún rostro guardado.
+  assert((await RostroUsuario.countDocuments({ id_usuario: idAdmin })) === 0, 'al terminar, el admin no tiene ningún rostro guardado');
 }
 
 async function main() {
@@ -457,8 +488,6 @@ async function main() {
   await Usuario.deleteMany({ usuario: /^rostro_/ });
   await RostroUsuario.deleteMany({});
 
-  const idAdminInicio = (await Usuario.findOne({ usuario: 'admin' }));
-  if (idAdminInicio) await RostroUsuario.deleteOne({ id_usuario: idAdminInicio.id_usuario });
   const resultado = await parte2();
   await parte3(resultado);
 

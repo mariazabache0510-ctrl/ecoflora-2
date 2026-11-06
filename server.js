@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { connect } = require('./src/db');
-const { importIfEmpty, syncCatalog, ensureAdmin, advertirSiAdminTieneClaveDeFabrica } = require('./src/importer');
+const { importIfEmpty, syncCatalog, ensureAdmin, advertirSiAdminTieneClaveDeFabrica, borrarRostrosDeAdmins } = require('./src/importer');
 const { createApp } = require('./src/app');
 const { secretoDeSesion, esProduccion } = require('./src/entorno');
 
@@ -20,6 +20,13 @@ async function main() {
   } else if (await syncCatalog()) {
     await ensureAdmin();
     console.log('Catálogo actualizado desde data/ecoflora_full.sql.');
+  }
+  try {
+    // El admin entra solo con contraseña: no se conserva ningún rostro de una cuenta admin.
+    const borrados = await borrarRostrosDeAdmins();
+    if (borrados) console.log(`Se borró el rostro guardado de ${borrados} cuenta(s) admin (el admin entra solo con contraseña).`);
+  } catch (error) {
+    console.error('No se pudo revisar los rostros de las cuentas admin:', error.message);
   }
   if (esProduccion()) {
     try {

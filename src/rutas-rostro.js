@@ -23,6 +23,7 @@ const limiteIntentoUsuario = crearLimitador({ max: 12, ventanaMs: DIEZ_MINUTOS }
 const COLLATION = { locale: 'es', strength: 2 };
 const MENSAJE_SIN_ROSTRO = 'No encontramos el inicio con rostro para esa cuenta. Revisa el usuario, o entra con tu contraseña y actívalo desde tu perfil.';
 const MENSAJE_DEMASIADOS = 'Demasiados intentos con el rostro. Espera unos minutos o entra con tu contraseña.';
+const MENSAJE_SOLO_CLAVE = 'Por seguridad, la cuenta de administración entra solo con contraseña.';
 
 const AUTORIZACION_VIGENCIA_MS = 10 * 60 * 1000;
 
@@ -50,6 +51,14 @@ function requireLogin(req, res, next) {
   return next();
 }
 
+// La cuenta admin no puede activar el rostro (entra solo con contraseña).
+function requireSinAdminJson(req, res, next) {
+  if (!rostro.rolPermiteRostro(req.session.rol)) {
+    return res.status(403).json({ ok: false, codigo: 'solo_contrasena', error: MENSAJE_SOLO_CLAVE });
+  }
+  return next();
+}
+
 function requireDisponible(req, res, next) {
   if (!rostro.disponible()) {
     return res.status(503).json({ ok: false, codigo: 'no_disponible', error: 'El inicio con rostro todavía no está disponible en este sitio.' });
@@ -72,6 +81,7 @@ function registrarRutasRostro(app) {
       const registro = await RostroUsuario.findOne({ id_usuario: req.session.id_usuario }).lean();
       res.render('rostro', {
         disponible: rostro.disponible(),
+        permitido: rostro.rolPermiteRostro(req.session.rol),
         activo: Boolean(registro),
         desde: registro ? registro.fecha_registro : null,
         bienvenida: req.query.bienvenida === '1',
@@ -85,7 +95,7 @@ function registrarRutasRostro(app) {
   });
 
   // Paso 1: la persona acepta la autorización (Ley 1581) y confirma su contraseña.
-  app.post('/rostro/autorizar', requireLoginJson, requireDisponible, ...leerJson, async (req, res, next) => {
+  app.post('/rostro/autorizar', requireLoginJson, requireSinAdminJson, requireDisponible, ...leerJson, async (req, res, next) => {
     try {
       const idUsuario = req.session.id_usuario;
       if (!limiteAutorizar.permitir(`u${idUsuario}`)) {
@@ -111,7 +121,7 @@ function registrarRutasRostro(app) {
   });
 
   // Paso 2: el servidor entrega un reto de prueba de vida de un solo uso.
-  app.post('/rostro/desafio', requireLoginJson, requireDisponible, ...leerJson, (req, res) => {
+  app.post('/rostro/desafio', requireLoginJson, requireSinAdminJson, requireDisponible, ...leerJson, (req, res) => {
     if (!autorizacionVigente(req)) {
       return res.status(403).json({ ok: false, codigo: 'sin_autorizacion', error: 'Primero acepta la autorización y confirma tu contraseña.' });
     }
@@ -119,7 +129,7 @@ function registrarRutasRostro(app) {
   });
 
   // Paso 3: llegan los descriptores (nunca fotos). Se validan y se guardan cifrados.
-  app.post('/rostro/registro', requireLoginJson, requireDisponible, ...leerJson, async (req, res, next) => {
+  app.post('/rostro/registro', requireLoginJson, requireSinAdminJson, requireDisponible, ...leerJson, async (req, res, next) => {
     try {
       const idUsuario = req.session.id_usuario;
       const autorizacion = autorizacionVigente(req);
@@ -185,7 +195,8 @@ function registrarRutasRostro(app) {
     const usuario = String(texto || '').trim().slice(0, 120);
     if (!usuario) return null;
     const user = await Usuario.findOne({ $or: [{ usuario }, { email: usuario }] }).collation(COLLATION);
-    if (!user) return null;
+    // La cuenta admin no entra con rostro: se responde igual que si no tuviera (no se revela nada).
+    if (!user || !rostro.rolPermiteRostro(user.rol)) return null;
     const registro = await RostroUsuario.findOne({ id_usuario: user.id_usuario });
     if (!registro || !registro.descriptores.length) return null;
     return { user, registro };
@@ -255,7 +266,7 @@ function registrarRutasRostro(app) {
         });
       }
       const distancia = rostro.mejorDistancia(descriptor, guardados);
-      if (!(distancia <= rostro.umbral(cuenta.user.rol))) {
+      if (!(distancia <= rostro.umbral())) {
         return res.status(401).json({ ok: false, codigo: 'no_coincide', error: 'No te reconocimos. Inténtalo de nuevo con buena luz o entra con tu contraseña.' });
       }
       await iniciarSesion(req, cuenta.user);

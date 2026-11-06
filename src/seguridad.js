@@ -55,8 +55,9 @@ function encabezadosDeSeguridad() {
           ...(produccion ? { upgradeInsecureRequests: [] } : {})
         }
       },
-      // HSTS: el navegador no vuelve a abrir el sitio por http. Solo en producción.
-      strictTransportSecurity: produccion ? { maxAge: 15552000 } : false,
+      // HSTS: el navegador no vuelve a abrir el sitio por http (180 días). Solo en producción.
+      // Sin includeSubDomains: así no afecta a otros subdominios que algún día uses con tu dominio propio.
+      strictTransportSecurity: produccion ? { maxAge: 15552000, includeSubDomains: false } : false,
       xFrameOptions: { action: 'deny' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
     }),

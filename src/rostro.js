@@ -112,11 +112,15 @@ function leerNumero(nombre, porDefecto, minimo, maximo) {
 }
 
 // FACE_MATCH_THRESHOLD: entre más bajo, más estricto. 0.5 es un buen punto de partida.
-function umbral(rol) {
-  const general = leerNumero('FACE_MATCH_THRESHOLD', 0.5, 0.2, 0.7);
-  if (rol !== 'admin') return general;
-  // La cuenta admin controla pedidos y stock: por defecto exige 0.05 más de parecido.
-  return leerNumero('FACE_MATCH_THRESHOLD_ADMIN', Math.max(0.2, general - 0.05), 0.2, 0.7);
+function umbral() {
+  return leerNumero('FACE_MATCH_THRESHOLD', 0.5, 0.2, 0.7);
+}
+
+// La cuenta de administración controla pedidos, stock y usuarios: entra SOLO con contraseña.
+// El rostro es una comodidad para clientes (no se puede verificar en el servidor que la persona esté
+// frente a una cámara, así que no se acepta para la cuenta más delicada).
+function rolPermiteRostro(rol) {
+  return rol !== 'admin';
 }
 
 // ---------- Retos de prueba de vida (un solo uso) ----------
@@ -157,6 +161,7 @@ module.exports = {
   mejorDistancia,
   capturasConsistentes,
   umbral,
+  rolPermiteRostro,
   crearDesafio,
   consumirDesafio
 };

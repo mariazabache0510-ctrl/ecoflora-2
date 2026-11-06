@@ -19,7 +19,10 @@
                 <% if (activado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>¡Listo! Ya puedes entrar con tu rostro desde la pantalla de ingreso.</div><% } %>
                 <% if (eliminado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Borramos tu rostro de nuestro sistema. Seguirás entrando con tu contraseña.</div><% } %>
 
-                <% if (!disponible) { %>
+                <% if (!permitido) { %>
+                <div class="alert alert-info"><i class="bi bi-shield-lock me-2"></i>Por seguridad, la cuenta de administración entra solo con contraseña. El inicio con rostro está disponible para las cuentas de clientes.</div>
+                <div class="acciones-pie justify-content-center"><a href="<%= destinoInicio %>" class="btn btn-suave">Volver al panel</a></div>
+                <% } else if (!disponible) { %>
                 <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>El inicio con rostro todavía no está disponible en este sitio. Puedes seguir entrando con tu contraseña.</div>
                 <div class="acciones-pie justify-content-center"><a href="<%= destinoInicio %>" class="btn btn-suave">Continuar</a></div>
                 <% } else { %>
@@ -90,7 +93,7 @@
     </div>
 </div>
 
-<% if (disponible) { %>
+<% if (disponible && permitido) { %>
 <script src="/js/rostro-vida.js"></script>
 <script src="/js/rostro.js"></script>
 <% } %>

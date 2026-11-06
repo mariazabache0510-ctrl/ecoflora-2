@@ -87,6 +87,14 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    En /login aparecen las pestañas Contraseña | Rostro. La contraseña
    siempre queda como respaldo.
 
+   La cuenta de ADMINISTRACIÓN entra solo con contraseña: el rostro es
+   para clientes. Motivo: el servidor no puede comprobar que la persona
+   esté de verdad frente a la cámara (la prueba de vida corre en el
+   navegador), y esa cuenta controla pedidos, stock y usuarios. Por eso:
+   el menú del admin no ofrece el rostro, el servidor rechaza activarlo
+   para un admin, y al arrancar (o al ascender a alguien a admin) se borra
+   cualquier rostro guardado de una cuenta admin.
+
    Qué se guarda: la cámara calcula 128 números del rostro (el "descriptor")
    y el servidor los cifra con AES-256-GCM. No se envían ni se guardan fotos
    ni video. Antes de activarlo hay que aceptar la autorización (Ley 1581
@@ -102,8 +110,7 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
      Guárdala bien: si la pierdes o la cambias, cada persona tiene que
      volver a registrar su rostro.
    - FACE_MATCH_THRESHOLD=0.5 (qué tan parecido debe ser; menor = más
-     estricto). La cuenta admin exige 0.05 más de parecido por defecto.
-   - FACE_MATCH_THRESHOLD_ADMIN (opcional).
+     estricto; entre 0.2 y 0.7).
 
    La colección rostros_usuarios se crea sola en MongoDB. El archivo
    data/rostros_usuarios.sql es solo de referencia: el importador no lo lee

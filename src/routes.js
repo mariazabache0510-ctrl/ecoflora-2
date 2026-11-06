@@ -501,6 +501,8 @@ function registerRoutes(app) {
       if (!result.matchedCount) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('No se pudo actualizar'));
       }
+      // Una cuenta admin entra solo con contraseña: si se asciende a alguien, se borra su rostro guardado.
+      if (rol === 'admin') await RostroUsuario.deleteOne({ id_usuario: id });
       if (id === req.session.id_usuario) {
         req.session.nombre = nombre;
         req.session.usuario = usuario;

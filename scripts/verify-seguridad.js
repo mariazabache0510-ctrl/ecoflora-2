@@ -498,6 +498,7 @@ async function pruebaProduccion() {
   const pagina = await web.pedir('GET', '/login');
   const h = pagina.cabeceras;
   assert(/max-age=15552000/.test(h.get('strict-transport-security') || ''), 'en producción se envía HSTS (max-age de 180 días)');
+  assert(!/includeSubDomains/i.test(h.get('strict-transport-security') || ''), 'HSTS no se extiende a otros subdominios');
   assert(/upgrade-insecure-requests/.test(h.get('content-security-policy') || ''), 'en producción la CSP pide subir las peticiones a https');
   assert(pagina.setCookie.some((s) => s.startsWith('ecoflora.sid=') && /;\s*Secure/i.test(s) && /HttpOnly/i.test(s)), 'en producción la cookie de sesión es Secure y HttpOnly');
   const mala = await crearCliente(app.base, https).pedir('POST', '/login', { form: { usuario: 'admin', password: 'Admin123' }, ip: '10.20.0.1' });
