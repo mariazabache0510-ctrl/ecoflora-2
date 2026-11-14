@@ -121,7 +121,11 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    - node scripts/verify-face.js          (app encendida, misma clave)
    - node scripts/verify-rostro-browser.js (Chrome con cámara simulada;
      incluye el escenario "lento": sin WebGL y con el procesador 4 veces
-     más lento, y muestra cuánto tarda cada etapa)
+     más lento, el escenario "sin_wasm" y muestra cuánto tarda cada etapa)
+   - node scripts/bench-rostro.js          (mide en TU navegador y TU equipo
+     cuánto tarda el primer cuadro y cada cuadro con WebAssembly, WebGL y
+     el procesador; abre la dirección que imprime y deja el resultado en la
+     terminal)
 
    Consejos de uso: buena luz de frente, sin gorra ni lentes oscuros;
    ábrelo en Chrome o Safari (no dentro de Instagram/WhatsApp); en el
@@ -131,14 +135,28 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    preparando mientras la persona acepta la autorización o al abrir la
    pestaña Rostro de un navegador que ya entró con rostro. La cámara se
    pide al mismo tiempo, la prueba de vida empieza apenas hay imagen y
-   cada muestra del rostro se toma en una sola pasada. En un equipo lento
-   (sin WebGL o con cada cuadro muy tardado) se dan más segundos (nunca
-   menos de unos 12 cuadros para el gesto), se usa un detector más
-   pequeño y, si tocaba parpadear, se pide girar la cabeza, porque un
-   parpadeo dura menos que un cuadro. Si se queda pegado: abre la consola del
-   navegador (F12, pestaña Console) y busca las líneas que empiezan con
-   [rostro]; dicen cuánto tardó cada etapa y si el equipo usa WebGL
-   (rápido) o el procesador (lento). Los tiempos y tamaños se ajustan en
+   cada muestra del rostro se toma en una sola pasada.
+
+   Motor de cálculo: el reconocimiento usa TensorFlow.js con el motor
+   WebAssembly (wasm), que arranca al instante. Se probó con WebGL (la
+   tarjeta gráfica) y en un Mac con gráfica Intel el PRIMER cuadro tardó
+   cerca de 2 minutos, porque WebGL compila programas para la tarjeta antes
+   de usarla (y otra vez si cambia el tamaño de entrada): parecía que nunca
+   confirmaba. Con wasm el primer cuadro tarda menos de medio segundo y cada
+   cuadro unos 100 ms. El orden es wasm -> WebGL -> procesador (cpu); los
+   archivos .wasm salen del paquete @tensorflow/tfjs-backend-wasm y se sirven
+   desde /vendor/tfjs-wasm/ (la política CSP permite 'wasm-unsafe-eval',
+   no 'unsafe-eval'). No se usa la versión con hilos porque exige
+   aislamiento entre orígenes (COOP/COEP) que el sitio no tiene.
+   El detector trabaja con imágenes de 160 px (128 px en modo lento).
+
+   En un equipo lento (cada cuadro muy tardado o solo el procesador) se dan
+   más segundos (nunca menos de unos 12 cuadros para el gesto), se usa un
+   detector más pequeño y, si tocaba parpadear, se pide girar la cabeza,
+   porque un parpadeo dura menos que un cuadro. Si se queda pegado: abre la
+   consola del navegador (F12, pestaña Console) y busca las líneas que
+   empiezan con [rostro]; dicen cuánto tardó cada etapa y qué motor usa el
+   equipo (wasm: rápido; cpu: lento). Los tiempos y tamaños se ajustan en
    la constante ETAPA de public/js/rostro.js y los umbrales de parpadeo y
    giro en AJUSTES de public/js/rostro-vida.js.
 

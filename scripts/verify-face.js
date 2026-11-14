@@ -164,6 +164,18 @@ async function parte2() {
   const privacidad = await anonimo.pedir('GET', '/privacidad');
   assert(privacidad.status === 200 && privacidad.texto.includes('Ley 1581'), 'la política de datos es pública');
 
+  // Archivos del navegador: el motor de cálculo WebAssembly se sirve con su tipo y caché, y solo los 3 permitidos.
+  for (const archivo of ['tfjs-backend-wasm.wasm', 'tfjs-backend-wasm-simd.wasm', 'tfjs-backend-wasm-threaded-simd.wasm']) {
+    const r = await fetch(`${base}/vendor/tfjs-wasm/${archivo}`);
+    const bytes = Buffer.from(await r.arrayBuffer());
+    assert(r.status === 200 && r.headers.get('content-type') === 'application/wasm' && /max-age=\d+/.test(r.headers.get('cache-control') || '') && bytes.subarray(0, 4).toString('latin1') === '\0asm', `${archivo} se sirve como application/wasm con caché`);
+  }
+  const otroArchivo = await fetch(`${base}/vendor/tfjs-wasm/package.json`);
+  const escape = await fetch(`${base}/vendor/tfjs-wasm/..%2Fpackage.json`);
+  assert(otroArchivo.status === 404 && escape.status === 404, 'de la carpeta del motor solo se publican los 3 archivos .wasm');
+  const libreria = await fetch(`${base}/vendor/face-api/face-api.js`);
+  assert(libreria.status === 200 && (await libreria.text()).includes('setWasmPaths'), 'la librería trae el motor WebAssembly (setWasmPaths)');
+
   // Cuenta nueva: queda dentro y va directo a activar el rostro.
   const { cliente, registro } = await crearCuenta('rostro_uno');
   assert(registro.status === 302 && registro.location === '/rostro?bienvenida=1', 'crear cuenta lleva a activar el rostro');

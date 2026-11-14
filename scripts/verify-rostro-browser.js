@@ -13,7 +13,7 @@
 // Uso (con la app y MongoDB LOCALES de prueba encendidos, con FACE_ENCRYPTION_KEY puesta):
 //   node scripts/verify-rostro-browser.js
 // Variables opcionales: BASE_URL, CHROME_PATH, SHOTS_DIR, ESCENARIOS (ej. "exito,bloqueada").
-// El escenario "lento" simula un equipo flojo (sin WebGL y con el procesador limitado a 1/RALENTIZAR);
+// El escenario "lento" simula un equipo flojo (sin tarjeta gráfica y con el procesador limitado a 1/RALENTIZAR);
 // por defecto RALENTIZAR=4. Los escenarios "exito" y "lento" imprimen cuánto tarda cada etapa.
 
 const { spawn, execFileSync } = require('child_process');
@@ -26,7 +26,7 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const salida = process.env.SHOTS_DIR || path.join(os.tmpdir(), 'ecoflora-rostro');
 const trabajo = path.join(os.tmpdir(), 'ecoflora-rostro-camara');
 const muestras = path.join(__dirname, '..', 'node_modules', '@vladmandic', 'face-api', 'demo', 'sample1.jpg');
-const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro,login_ok,login_otra_persona,login_sin_rostro,lento').split(',');
+const quieren = (process.env.ESCENARIOS || 'exito,foto_fija,bloqueada,sin_rostro,login_ok,login_otra_persona,login_sin_rostro,lento,sin_wasm').split(',');
 const RALENTIZAR = Number(process.env.RALENTIZAR || 4);
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
@@ -68,7 +68,7 @@ function prepararCamara(persona) {
 // ---------- Un Chrome controlado por el protocolo DevTools ----------
 
 let siguientePuerto = 9420;
-async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar } = {}) {
+async function crearNavegador(nombre, { camara, bloquear, sinWebgl, sinWasm, ralentizar } = {}) {
   const puerto = siguientePuerto++;
   const args = ['--headless=new', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
     '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', `--remote-debugging-port=${puerto}`,
@@ -91,9 +91,9 @@ async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar }
     try { if (ws) ws.close(); } catch (error) { /* ya cerrado */ }
     try { proc.kill(); } catch (error) { /* ya cerrado */ }
   };
-  n.enviar = (metodo, params = {}) => new Promise((res, rej) => {
+  n.enviar = (metodo, params = {}, limite = 45000) => new Promise((res, rej) => {
     const i = ++contador;
-    const espera = setTimeout(() => { pendientes.delete(i); rej(new Error('sin respuesta de Chrome: ' + metodo)); }, 45000);
+    const espera = setTimeout(() => { pendientes.delete(i); rej(new Error('sin respuesta de Chrome: ' + metodo)); }, limite);
     pendientes.set(i, { res: (v) => { clearTimeout(espera); res(v); }, rej: (e) => { clearTimeout(espera); rej(e); } });
     ws.send(JSON.stringify({ id: i, method: metodo, params }));
   });
@@ -143,6 +143,11 @@ async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar }
     })()` });
   }
 
+  if (sinWasm) {
+    // Un navegador sin WebAssembly: el motor preferido no puede arrancar y la librería tiene que buscar otro.
+    await n.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(window, 'WebAssembly', { value: undefined, configurable: true })` });
+  }
+
   n.evaluar = async (expresion) => {
     const r = await n.enviar('Runtime.evaluate', { expression: expresion, returnByValue: true, awaitPromise: true });
     if (r.exceptionDetails) throw new Error('evaluate: ' + (r.exceptionDetails.exception && r.exceptionDetails.exception.description));
@@ -161,10 +166,19 @@ async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar }
     }
     await dormir(espera);
   };
+  // Las capturas son un extra para mirarlas con los ojos: si el equipo está tan ocupado que Chrome no puede sacarlas,
+  // se dejan de intentar (y no se rompe la prueba, que revisa todo lo demás por código).
+  let sinCapturas = false;
   n.foto = async (nombreArchivo) => {
-    fs.mkdirSync(salida, { recursive: true });
-    const r = await n.enviar('Page.captureScreenshot', { format: 'jpeg', quality: 82 });
-    fs.writeFileSync(path.join(salida, nombreArchivo + '.jpg'), Buffer.from(r.data, 'base64'));
+    if (sinCapturas) return;
+    try {
+      fs.mkdirSync(salida, { recursive: true });
+      const r = await n.enviar('Page.captureScreenshot', { format: 'jpeg', quality: 82 }, 10000);
+      fs.writeFileSync(path.join(salida, nombreArchivo + '.jpg'), Buffer.from(r.data, 'base64'));
+    } catch (error) {
+      sinCapturas = true;
+      console.log('      (no se pudieron sacar capturas de pantalla: ' + error.message + ')');
+    }
   };
   n.punto = (selector) => n.evaluar(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
   n.clic = async (selector) => {
@@ -177,10 +191,32 @@ async function crearNavegador(nombre, { camara, bloquear, sinWebgl, ralentizar }
     await n.enviar('Input.dispatchMouseEvent', { type: 'mouseReleased', x: q.x, y: q.y, button: 'left', clickCount: 1 });
     await dormir(250);
   };
+  // Con el equipo muy ocupado Chrome a veces pierde un clic sintético (el DOM está bien, el evento no llega).
+  // Se repite el clic hasta que se vea su efecto; si el equipo no lo deja, se avisa y se cuenta como reintento.
+  n.clicHasta = async (selector, condicion, ms = 3000) => {
+    for (let intento = 1; intento <= 3; intento += 1) {
+      await n.clic(selector);
+      const limite = Date.now() + ms;
+      while (Date.now() < limite) {
+        if (await n.evaluar(condicion).catch(() => false)) return true;
+        await dormir(250);
+      }
+      console.log(`      (el clic en ${selector} no tuvo efecto en ${ms} ms; reintento ${intento}/3)`);
+    }
+    const detalle = await n.evaluar(`'estado ' + (document.querySelector('[data-rostro-camara]') || { getAttribute: () => '?' }).getAttribute('data-estado') + ' | usuario "' + ((document.querySelector('[data-rostro-usuario]') || {}).value || '') + '" | mensaje "' + ((document.querySelector('[data-rostro-mensaje]') || {}).textContent || '').trim().slice(0, 100) + '"'`).catch(() => '?');
+    console.log('      ' + detalle);
+    return false;
+  };
   n.escribir = async (selector, texto) => {
-    await n.clic(selector);
-    await n.enviar('Input.insertText', { text: texto });
-    await dormir(200);
+    const valor = () => n.evaluar(`document.querySelector(${JSON.stringify(selector)}).value`).catch(() => '');
+    for (let intento = 1; intento <= 3; intento += 1) {
+      await n.clic(selector);
+      await n.enviar('Input.insertText', { text: texto });
+      await dormir(200);
+      if ((await valor()) === texto) return;
+      console.log(`      (no se escribió en ${selector}: tiene "${await valor()}"; reintento ${intento}/3)`);
+      await n.evaluar(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); e.value = ''; })()`).catch(() => null);
+    }
   };
   n.esperar = async (expresion, ms, que) => {
     const limite = Date.now() + ms;
@@ -309,6 +345,8 @@ async function escenarioExito() {
   console.log('      total de "Encender cámara" al éxito: ' + totalSegundos + ' s');
   console.log('      consola: ' + consola.join(' || '));
   verifica(tieneExtractFaces === true, 'face-api ofrece extractFaces (la captura reutiliza la detección)');
+  verifica(consola.some((l) => /motor wasm/.test(l)), 'el motor de cálculo es WebAssembly: no depende de la tarjeta gráfica ni compila shaders');
+  verifica(!consola.some((l) => /dispositivo lento/.test(l)), 'en un equipo normal no se activa el modo para dispositivos lentos');
   verifica(totalSegundos < 20, 'de "Encender cámara" al éxito pasan menos de 20 s (' + totalSegundos + ' s con la prueba de vida simulada)');
   await n.esperar(`location.pathname === '/rostro' && location.search.includes('activado=1')`, 10000, 'la redirección');
   await dormir(800);
@@ -407,6 +445,8 @@ async function escenarioSinRostro() {
 // Sustituye la prueba de vida por una que se cumple sola (una foto no parpadea).
 // Simula una persona que completa el gesto después de `cuadros` cuadros (un equipo lento ve muchos menos por segundo).
 const reemplazarReto = (n, cuadros = 25) => n.evaluar(`window.RostroVida.crearReto = (accion) => { let c = 0; return { accion, procesar: () => { c += 1; return { fase: 'prueba', progreso: Math.min(1, c / ${cuadros}), completado: c >= ${cuadros} }; } }; }`);
+// La captura ya empezó: el estado de la cámara dejó de ser "inactivo".
+const ENCENDIDA = `document.querySelector('[data-rostro-camara]').getAttribute('data-estado') !== 'inactivo'`;
 const esperarEstado = (n, lista, ms, que) => n.esperar(`${JSON.stringify(lista)}.includes(document.querySelector('[data-rostro-camara]').getAttribute('data-estado'))`, ms, que);
 
 async function escenarioLoginOk() {
@@ -423,14 +463,13 @@ async function escenarioLoginOk() {
   await dormir(700);
   verifica((await n.evaluar(`document.querySelector('[data-login-panel="clave"]').hidden && !document.querySelector('[data-login-panel="rostro"]').hidden`)) === true, 'la pestaña Rostro cambia el panel');
   await n.foto('21-login-rostro-escritorio');
-  await n.clic('[data-login-rostro-iniciar]');
-  const marcado = await n.esperar(`document.querySelector('[data-rostro-usuario]').classList.contains('is-invalid')`, 4000, 'marcar el campo').catch(() => false);
-  if (marcado !== true) console.log('      campo: ' + (await n.evaluar(`document.querySelector('[data-rostro-usuario]').className + ' | estado ' + document.querySelector('[data-rostro-camara]').getAttribute('data-estado') + ' | botón: ' + document.querySelector('[data-login-rostro-iniciar]').outerHTML.slice(0, 120)`)));
+  const marcado = await n.clicHasta('[data-login-rostro-iniciar]', `document.querySelector('[data-rostro-usuario]').classList.contains('is-invalid')`, 5000);
+  if (marcado !== true) console.log('      campo: ' + (await n.evaluar(`(() => { const b = document.querySelector('[data-login-rostro-iniciar]'); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2; const y = r.top + r.height / 2; const t = document.elementFromPoint(x, y); return document.querySelector('[data-rostro-usuario]').className + ' | estado ' + document.querySelector('[data-rostro-camara]').getAttribute('data-estado') + ' | botón: ' + b.outerHTML.slice(0, 120) + ' | rect ' + [r.left, r.top, r.width, r.height].map(Math.round) + ' | punto ' + Math.round(x) + ',' + Math.round(y) + ' | encima: ' + (t ? t.tagName + '.' + t.className : 'nada') + ' | viewport ' + innerWidth + 'x' + innerHeight + ' | disabled ' + b.disabled + ' | valor "' + document.querySelector('[data-rostro-usuario]').value + '" | recordado ' + localStorage.getItem('ecoflora_rostro_usuario'); })()`)));
   verifica(marcado === true, 'sin usuario se marca el campo y no se enciende la cámara');
   await n.escribir('[data-rostro-usuario]', u);
   await reemplazarReto(n);
   await vigilarEstados(n);
-  await n.clic('[data-login-rostro-iniciar]');
+  await n.clicHasta('[data-login-rostro-iniciar]', ENCENDIDA, 8000);
   await esperarEstado(n, ['reto', 'exito', 'error'], 120000, 'llegar al reto');
   await dormir(500);
   await n.foto('22-login-reto-escritorio');
@@ -474,7 +513,7 @@ async function escenarioLoginOtraPersona() {
   await n.escribir('[data-rostro-usuario]', u);
   await reemplazarReto(n);
   await vigilarEstados(n);
-  await n.clic('[data-login-rostro-iniciar]');
+  await n.clicHasta('[data-login-rostro-iniciar]', ENCENDIDA, 8000);
   await esperarEstado(n, ['exito', 'error'], 150000, 'el resultado');
   const mensaje = await texto(n, '[data-rostro-mensaje]');
   if (!/no te reconocimos/i.test(mensaje)) console.log('      pistas vistas: ' + (await pistas(n)));
@@ -498,7 +537,7 @@ async function escenarioLoginSinRostro() {
   await n.ir('/login');
   await n.clic('[data-login-tab="rostro"]');
   await n.escribir('[data-rostro-usuario]', u);
-  await n.clic('[data-login-rostro-iniciar]');
+  await n.clicHasta('[data-login-rostro-iniciar]', ENCENDIDA, 8000);
   await esperarEstado(n, ['error'], 15000, 'el aviso rápido');
   const mensaje = await texto(n, '[data-rostro-mensaje]');
   verifica(/no tiene el rostro activado/i.test(mensaje) && /contraseña/i.test(mensaje), 'se avisa que la cuenta no tiene rostro y se sugiere la contraseña');
@@ -534,17 +573,42 @@ async function escenarioLento() {
     console.log('      pistas vistas: ' + (await pistas(n)));
   }
   verifica(final === 'exito', 'aun sin WebGL y con el procesador limitado, el registro termina bien (' + totalSegundos + ' s)');
-  verifica(n.registro.some((l) => /motor cpu/.test(l)), 'el navegador usó el procesador (cpu) como respaldo');
-  verifica(n.registro.some((l) => /dispositivo lento/.test(l)), 'se activó el modo para dispositivos lentos');
+  verifica(n.registro.some((l) => /motor wasm/.test(l)), 'sin tarjeta gráfica el motor sigue siendo WebAssembly (no hay que esperar ninguna compilación)');
   await dormir(500);
   await n.foto('31-lento-exito-escritorio');
   n.cerrar();
   return n;
 }
 
+// El caso más extremo: ni WebAssembly ni WebGL. La librería cae al procesador en JavaScript (lento) y el flujo
+// debe seguir funcionando, con el modo para dispositivos lentos.
+async function escenarioSinWasm() {
+  console.log('\n== Navegador sin WebAssembly ni WebGL: queda el procesador en JavaScript ==');
+  const n = await crearNavegador('sin_wasm', { camara: prepararCamara('a'), sinWebgl: true, sinWasm: true });
+  const u = `nav_w_${Date.now() % 1000000}`;
+  await crearUsuario(u);
+  await n.vista(1280, 900, false);
+  await entrar(n, u);
+  await n.ir('/rostro');
+  await pasarAutorizacion(n);
+  await reemplazarReto(n, 8);
+  await vigilarEstados(n);
+  await n.clic('[data-rostro-iniciar]');
+  await esperarEstado(n, ['reto', 'exito', 'error'], 240000, 'llegar al reto');
+  await esperarEstado(n, ['exito', 'error'], 300000, 'el resultado');
+  const final = await estado(n);
+  console.log('      consola: ' + n.registro.join(' || '));
+  if (final !== 'exito') console.log('      mensaje: ' + (await texto(n, '[data-rostro-mensaje]')));
+  verifica(final === 'exito', 'sin WebAssembly ni WebGL el registro igual termina bien (' + (await total(n)) + ' s)');
+  verifica(n.registro.some((l) => /motor cpu/.test(l)), 'la librería usó el procesador (cpu) como último recurso');
+  verifica(n.registro.some((l) => /dispositivo lento/.test(l)), 'se activó el modo para dispositivos lentos');
+  n.cerrar();
+  return n;
+}
+
 async function main() {
   fs.mkdirSync(salida, { recursive: true });
-  const escenarios = { lento: escenarioLento, exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro, login_ok: escenarioLoginOk, login_otra_persona: escenarioLoginOtraPersona, login_sin_rostro: escenarioLoginSinRostro };
+  const escenarios = { lento: escenarioLento, sin_wasm: escenarioSinWasm, exito: escenarioExito, foto_fija: escenarioFotoFija, bloqueada: escenarioBloqueada, sin_rostro: escenarioSinRostro, login_ok: escenarioLoginOk, login_otra_persona: escenarioLoginOtraPersona, login_sin_rostro: escenarioLoginSinRostro };
   for (const nombre of quieren) {
     if (!escenarios[nombre]) continue;
     const n = await escenarios[nombre]();

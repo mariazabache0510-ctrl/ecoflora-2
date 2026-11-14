@@ -9,6 +9,7 @@
     var Vida = window.RostroVida;
     var RUTA_LIBRERIA = '/vendor/face-api/face-api.js';
     var RUTA_MODELOS = '/modelos/rostro';
+    var RUTA_WASM = '/vendor/tfjs-wasm/';   // los motores de cálculo en WebAssembly (ver elegirMotor)
     var reducir = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Tiempos y tamaños de cada etapa (en milisegundos). En un dispositivo lento los límites se duplican.
@@ -21,8 +22,8 @@
         servidor: 25000     // espera máxima de una respuesta del servidor
     };
     var PAUSA_MUESTRAS = 140;   // descanso entre una muestra del rostro y la siguiente
-    var TAMANO_NORMAL = 224;    // tamaño (px) al que el detector mira cada cuadro
-    var TAMANO_LENTO = 192;     // el mismo, en dispositivos lentos
+    var TAMANO_NORMAL = 160;    // tamaño (px) al que el detector mira cada cuadro (la cara llena el círculo: sobra)
+    var TAMANO_LENTO = 128;     // el mismo, en dispositivos lentos
 
     function $(selector, contexto) { return (contexto || document).querySelector(selector); }
     function dormir(ms) { return new Promise(function (resolver) { setTimeout(resolver, ms); }); }
@@ -130,7 +131,7 @@
     var promesaModelos = null;
     var promesaCalentamiento = null;
     var modelosListos = false;  // true cuando los modelos están descargados Y calentados
-    var motor = '';            // 'webgl' (rápido) o 'cpu' (lento): lo que usa el navegador para los cálculos
+    var motor = '';            // 'wasm' (el preferido), 'webgl' o 'cpu' (lento): con qué hace los cálculos el navegador
     var textoCarga = '';
     var oyentesCarga = [];
     var detectores = {};
@@ -157,12 +158,12 @@
         return detectores[tamano];
     }
 
-    // Una pasada de prueba con las 3 redes, sobre una imagen gris, para que el navegador compile sus programas
-    // de cálculo (shaders de WebGL) ahora. Si no, esa compilación ocurre con el primer cuadro de la cámara y
-    // congela la página unos segundos.
+    // Una pasada de prueba con las 3 redes, sobre una imagen gris, para que el navegador prepare sus programas de
+    // cálculo ahora y no con el primer cuadro de la cámara. (Con WebAssembly es casi instantáneo; con WebGL es la
+    // compilación de shaders, que puede tardar.)
     function calentar(f) {
-        // Los programas dependen del tamaño de la imagen: el cuadro de prueba mide lo mismo que el de la cámara (640x480)
-        // y el recorte de la cara es de un tamaño parecido a los reales.
+        // Con WebGL los programas dependen del tamaño de la imagen: el cuadro de prueba mide lo mismo que el de la
+        // cámara (640x480) y el recorte de la cara es de un tamaño parecido a los reales.
         function gris(ancho, alto) {
             var lienzo = document.createElement('canvas');
             lienzo.width = ancho;
@@ -180,7 +181,32 @@
             .catch(function () { /* si algo falla aquí, simplemente se compila con el primer cuadro real */ });
     }
 
-    // Baja la librería y los modelos, elige WebGL o CPU y calienta las redes. Es seguro llamarla varias veces:
+    // Arranca un motor de cálculo y confirma que de verdad quedó activo.
+    function iniciarMotor(f, nombre) {
+        return Promise.resolve(f.tf.setBackend(nombre)).then(function (listo) {
+            if (!listo) return false;
+            return Promise.resolve(f.tf.ready()).then(function () { return f.tf.getBackend() === nombre; });
+        }).catch(function () { return false; });
+    }
+
+    // Elige con qué calcula el navegador, en este orden:
+    //  1. WebAssembly ("wasm"): arranca al instante y rinde parecido en cualquier equipo. Es la primera opción a
+    //     propósito: WebGL (la tarjeta gráfica) tiene que COMPILAR programas la primera vez y en algunos equipos
+    //     (por ejemplo, Macs con gráficos Intel) eso tarda minutos y la cámara parece congelada.
+    //  2. WebGL, si el navegador no puede con WebAssembly.
+    //  3. Procesador en JavaScript ("cpu"): lento, solo como último recurso.
+    function elegirMotor(f) {
+        if (!f.tf || !f.tf.setBackend) return Promise.resolve('');
+        if (f.tf.setWasmPaths) f.tf.setWasmPaths(RUTA_WASM);
+        return ['wasm', 'webgl', 'cpu'].reduce(function (cadena, nombre) {
+            return cadena.then(function (elegido) {
+                if (elegido) return elegido;
+                return iniciarMotor(f, nombre).then(function (listo) { return listo ? nombre : ''; });
+            });
+        }, Promise.resolve(''));
+    }
+
+    // Baja la librería y los modelos, elige el motor de cálculo y calienta las redes. Es seguro llamarla varias veces:
     // todas comparten la misma descarga. oyente(texto) recibe los avances ("Descargando modelos 2 de 3…").
     function cargarModelos(oyente) {
         escucharCarga(oyente);
@@ -197,16 +223,7 @@
             return null;
         }).then(function () {
             var f = window.faceapi;
-            var preparar = Promise.resolve();
-            if (f.tf && f.tf.setBackend) {
-                // WebGL es rápido; si el dispositivo no lo tiene (o falla al arrancar) se usa el procesador.
-                preparar = f.tf.setBackend('webgl')
-                    .then(function (listo) { return listo ? true : f.tf.setBackend('cpu'); })
-                    .catch(function () { return f.tf.setBackend('cpu'); })
-                    .then(function () { return f.tf.ready(); })
-                    .catch(function () { return f.tf.setBackend('cpu').then(function () { return f.tf.ready(); }); });
-            }
-            return preparar.then(function () {
+            return elegirMotor(f).then(function () {
                 motor = f.tf && f.tf.getBackend ? f.tf.getBackend() : '';
                 var hechos = 0;
                 function avanzar() { hechos += 1; informarCarga('Descargando modelos ' + hechos + ' de 3…'); }
@@ -715,7 +732,7 @@
                 if (yo !== turno) return null;
                 registrar('modelos y cámara', marca, 'motor ' + (motor || 'desconocido'));
                 marca = Date.now();
-                if (motor === 'cpu') modoLento('el navegador usa el procesador (sin WebGL)');
+                if (motor === 'cpu') modoLento('el navegador solo puede calcular con el procesador en JavaScript');
                 ajustarLienzo();
                 ui.ocultarMensaje();
                 ui.estado('reto');

@@ -38,6 +38,14 @@ const MODELOS_ROSTRO = new Set([
   'face_recognition_model.bin'
 ]);
 
+// Motor de cálculo en WebAssembly (de @tensorflow/tfjs-backend-wasm; la parte en JavaScript ya viene dentro de
+// face-api.js). Es lo que usa el rostro por defecto: ver elegirMotor() en public/js/rostro.js.
+const ARCHIVOS_WASM = new Set([
+  'tfjs-backend-wasm.wasm',
+  'tfjs-backend-wasm-simd.wasm',
+  'tfjs-backend-wasm-threaded-simd.wasm'
+]);
+
 function shouldRecord(req) {
   if (req.method !== 'GET') return false;
   if (req.get('x-requested-with')) return false;
@@ -111,6 +119,14 @@ function createApp() {
     if (!MODELOS_ROSTRO.has(req.params.archivo)) return next();
     res.setHeader('Cache-Control', CACHE_LARGA);
     return res.sendFile(path.join(carpetaFaceApi, 'model', req.params.archivo));
+  });
+  const carpetaWasm = path.join(path.dirname(require.resolve('@tensorflow/tfjs-backend-wasm/package.json')), 'dist');
+  app.get('/vendor/tfjs-wasm/:archivo', (req, res, next) => {
+    if (!ARCHIVOS_WASM.has(req.params.archivo)) return next();
+    res.setHeader('Cache-Control', CACHE_LARGA);
+    // application/wasm permite que el navegador compile el archivo mientras lo descarga.
+    res.type('application/wasm');
+    return res.sendFile(path.join(carpetaWasm, req.params.archivo));
   });
 
   app.use(express.static(path.join(__dirname, '..', 'public'), {

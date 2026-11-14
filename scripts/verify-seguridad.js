@@ -414,7 +414,8 @@ async function pruebaPaginas(app) {
   const csp = h.get('content-security-policy') || '';
   assert(/default-src 'self'/.test(csp) && /object-src 'none'/.test(csp) && /frame-ancestors 'none'/.test(csp) && /form-action 'self'/.test(csp) && /base-uri 'self'/.test(csp), 'la CSP limita todo al propio sitio y prohíbe objetos y marcos');
   const scriptSrc = (csp.match(/script-src ([^;]+)/) || [])[1] || '';
-  assert(/'nonce-/.test(scriptSrc) && !/unsafe-inline|unsafe-eval/.test(scriptSrc), 'script-src usa nonce y no permite unsafe-inline ni unsafe-eval');
+  assert(/'nonce-/.test(scriptSrc) && !/unsafe-inline|(?<!wasm-)unsafe-eval/.test(scriptSrc), 'script-src usa nonce y no permite unsafe-inline ni unsafe-eval');
+  assert(/'wasm-unsafe-eval'/.test(scriptSrc), "script-src permite compilar WebAssembly ('wasm-unsafe-eval'), que usa el motor del rostro");
   assert(/script-src-attr 'none'/.test(csp), 'script-src-attr está en none (sin onclick="" ni similares)');
   assert(/connect-src 'self'/.test(csp) && /img-src 'self' data:/.test(csp), 'fetch e imágenes solo al propio sitio');
   assert(!/upgrade-insecure-requests/.test(csp) && !h.get('strict-transport-security'), 'en desarrollo (http) NO se fuerza https ni HSTS');

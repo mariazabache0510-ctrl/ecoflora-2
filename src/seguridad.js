@@ -3,6 +3,7 @@
 // Política de contenido (CSP): solo se permite lo que el sitio usa de verdad.
 //  - Scripts: los propios (/js/...), el paquete de Bootstrap desde jsDelivr (con la ruta exacta) y los
 //    scripts en línea que lleven el "nonce" de cada respuesta. No se permiten onclick="", onsubmit="" ni "javascript:".
+//    Se permite compilar WebAssembly ('wasm-unsafe-eval') para el motor de cálculo del rostro; eval() sigue prohibido.
 //  - Estilos: propios, Bootstrap y Bootstrap Icons (jsDelivr), Google Fonts y estilos en línea (style="...").
 //  - Tipografías: Google Fonts y los iconos de Bootstrap Icons.
 //  - Imágenes: propias (fotos de plantas) y data: (iconos pequeños). La cámara no pasa por CSP.
@@ -42,7 +43,8 @@ function encabezadosDeSeguridad() {
         directives: {
           defaultSrc: ["'self'"],
           baseUri: ["'self'"],
-          scriptSrc: ["'self'", BOOTSTRAP_JS, (req, res) => `'nonce-${res.locals.cspNonce}'`],
+          // 'wasm-unsafe-eval' solo permite compilar WebAssembly (el motor de cálculo del rostro); NO permite eval().
+          scriptSrc: ["'self'", "'wasm-unsafe-eval'", BOOTSTRAP_JS, (req, res) => `'nonce-${res.locals.cspNonce}'`],
           scriptSrcAttr: ["'none'"],
           styleSrc: ["'self'", "'unsafe-inline'", BOOTSTRAP_CSS, `${ICONOS_RUTA}bootstrap-icons.min.css`, 'https://fonts.googleapis.com/css2'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com', `${ICONOS_RUTA}fonts/`],
