@@ -1,0 +1,46 @@
+<%- include(partial('header')) %>
+
+<div class="container contenedor-pagina">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-5 col-xl-4">
+            <div class="auth-tarjeta vidrio reveal">
+                <div class="auth-cabecera">
+                    <%- include(partial('logo'), { uid: 'nueva-clave' }) %>
+                    <h1><%= valido ? 'Elige tu nueva contraseña' : 'Enlace no válido' %></h1>
+                    <p><%= valido ? 'Mínimo 8 caracteres' : 'El enlace venció, ya se usó o no es correcto' %></p>
+                </div>
+
+                <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+
+                <% if (valido) { %>
+                <form method="POST" action="/recuperar/<%= token %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <div class="mb-3">
+                        <label class="form-label" for="password">Contraseña nueva</label>
+                        <div class="campo con-ojo">
+                            <i class="bi bi-lock"></i>
+                            <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" minlength="8" required autofocus>
+                            <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="confirmar">Repite la contraseña</label>
+                        <div class="campo con-ojo">
+                            <i class="bi bi-shield-lock"></i>
+                            <input type="password" id="confirmar" name="confirmar" class="form-control" autocomplete="new-password" minlength="8" required>
+                            <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-check2-circle me-2"></i>Guardar contraseña</button>
+                </form>
+                <% } else { %>
+                <a href="/recuperar" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-envelope me-2"></i>Pedir un enlace nuevo</a>
+                <% } %>
+
+                <p class="auth-pie"><a href="/login">Volver a ingresar</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

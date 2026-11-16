@@ -1,0 +1,68 @@
+# Parte 2 del parcial: DOS servidores de bases de datos distintos, en local.
+#   postgres  -> localhost:5433  tablas cliente y producto  (+ mysql_fdw que apunta al otro servidor)
+#   mysql     -> localhost:3307  tabla factura
+# (Si esos puertos ya los usa otro programa tuyo, cámbialos con PG_PORT y MYSQL_PORT en docker/.env.)
+#
+# Uso (desde la carpeta docker/):
+#   cp .env.example .env      # y cambia las contraseñas (el archivo .env NO se sube al repositorio)
+#   docker compose up -d --build
+#   docker compose down       # apagar (agrega -v para borrar también los datos)
+name: ecoflora-federada
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ecoflora_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?define MYSQL_ROOT_PASSWORD en docker/.env}
+      MYSQL_DATABASE: ecoflora_facturas
+      MYSQL_USER: ecoflora_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?define MYSQL_APP_PASSWORD en docker/.env}
+      # Usuario que usa el servidor Postgres (mysql_fdw) para leer la tabla factura.
+      FDW_MYSQL_USER: fdw_postgres
+      FDW_MYSQL_PASSWORD: ${FDW_MYSQL_PASSWORD:?define FDW_MYSQL_PASSWORD en docker/.env}
+    command: ["--default-authentication-plugin=mysql_native_password", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_datos:/var/lib/mysql
+      - ./sql/mysql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  postgres:
+    build: ./postgres
+    container_name: ecoflora_postgres
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ecoflora
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?define PG_PASSWORD en docker/.env}
+      POSTGRES_DB: ecoflora_pg
+      # Para el CREATE USER MAPPING del script de federación (el otro servidor se llama "mysql" dentro de la red de Docker).
+      FDW_MYSQL_HOST: mysql
+      FDW_MYSQL_PORT: "3306"
+      FDW_MYSQL_USER: fdw_postgres
+      FDW_MYSQL_PASSWORD: ${FDW_MYSQL_PASSWORD:?define FDW_MYSQL_PASSWORD en docker/.env}
+    ports:
+      - "127.0.0.1:${PG_PORT:-5433}:5432"
+    volumes:
+      - pg_datos:/var/lib/postgresql/data
+      - ./sql/postgres:/docker-entrypoint-initdb.d:ro
+      # La federación se ejecuta desde 02-federacion.sh (necesita variables), por eso no está en la carpeta de arranque.
+      - ./sql/federacion.sql:/federacion.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecoflora -d ecoflora_pg"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mysql_datos:
+  pg_datos:

@@ -1047,3 +1047,29 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
     .js .reveal, .hero-titulo .palabra { opacity: 1 !important; }
     .jardin-caida, .jardin-vuelo { display: none; }
 }
+
+/* ---------- Cuentas: Google y recuperar contraseña ---------- */
+.auth-separador { display: flex; align-items: center; gap: 0.8rem; margin: 1.25rem 0 1rem; color: #6b8577; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.auth-separador::before, .auth-separador::after { content: ''; flex: 1; height: 1px; background: rgba(45, 106, 79, 0.2); }
+.google-boton { display: flex; justify-content: center; min-height: 44px; }
+.google-bloque.ocupado .google-boton { opacity: 0.55; pointer-events: none; }
+.google-error { margin: 0.7rem 0 0; text-align: center; color: #9b2c2c; font-size: 0.9rem; }
+.enlace-olvide { display: block; margin-top: 0.85rem; text-align: center; font-size: 0.92rem; }
+.badge-google { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.4rem; padding: 0.12rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; color: #1b4332; background: rgba(82, 183, 136, 0.18); border: 1px solid rgba(82, 183, 136, 0.35); }
+
+/* ---------- Sitios de interés (mapa) ---------- */
+.sitios-mapa { position: relative; width: 100%; height: 440px; border-radius: var(--radio); overflow: hidden; background: var(--verde-pastel); box-shadow: var(--sombra-suave); }
+.sitios-mapa-aviso { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1.5rem; text-align: center; color: var(--texto-suave); }
+.sitios-mapa-aviso i { font-size: 2.4rem; color: var(--verde-medio); }
+.sitios-ayuda { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--texto-suave); }
+.sitios-coords { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.sitios-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.sitio-item { display: flex; gap: 0.8rem; align-items: flex-start; padding: 0.85rem 1rem; border-radius: var(--radio-sm); background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(45, 106, 79, 0.14); cursor: pointer; transition: transform 0.2s var(--curva), box-shadow 0.2s var(--curva); }
+.sitio-item:hover, .sitio-item:focus-visible { transform: translateY(-2px); box-shadow: var(--sombra-suave); outline: none; }
+.sitio-item h3 { margin: 0; font-size: 1rem; font-family: var(--fuente-texto); font-weight: 600; color: var(--verde-oscuro); }
+.sitio-item p { margin: 0.2rem 0 0; font-size: 0.9rem; color: var(--texto-suave); overflow-wrap: anywhere; }
+.sitio-item small { color: var(--texto-suave); }
+.sitio-cuerpo { flex: 1; min-width: 0; }
+.sitio-cat { display: inline-block; margin-left: 0.4rem; padding: 0.08rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; color: var(--verde-oscuro); background: rgba(82, 183, 136, 0.2); }
+.sitios-estado { margin: 0; padding: 1rem; text-align: center; color: var(--texto-suave); }
+@media (max-width: 575.98px) { .sitios-mapa { height: 320px; } }

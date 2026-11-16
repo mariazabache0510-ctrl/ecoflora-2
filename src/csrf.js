@@ -53,7 +53,8 @@ function paginaAnterior(req) {
 }
 
 function rechazar(req, res) {
-  console.warn(`CSRF: se rechazó ${req.method} ${req.path} (token ausente o inválido)`);
+  // (El token de recuperar contraseña va en la ruta: no se escribe en el log.)
+  console.warn(`CSRF: se rechazó ${req.method} ${req.path.replace(/^(\/recuperar\/).+$/, '$1…')} (token ausente o inválido)`);
   if (quiereJson(req)) {
     return res.status(403).json({ ok: false, codigo: 'csrf', error: MENSAJE });
   }

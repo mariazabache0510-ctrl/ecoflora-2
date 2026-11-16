@@ -1,0 +1,9 @@
+<%# Botón "Continuar con Google". Solo aparece si el sitio tiene GOOGLE_CLIENT_ID. El JS valida el resultado en el servidor. %>
+<% if (googleDisponible) { %>
+<div class="google-bloque" data-google data-client-id="<%= googleClientId %>" data-csrf="<%= csrfToken %>" data-texto="<%= typeof texto === 'undefined' ? 'continue_with' : texto %>">
+    <div class="auth-separador"><span>o</span></div>
+    <div class="google-boton" data-google-boton></div>
+    <p class="google-error" data-google-error role="alert" hidden></p>
+</div>
+<script src="/js/google.js"></script>
+<% } %>

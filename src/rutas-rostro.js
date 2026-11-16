@@ -106,6 +106,9 @@ function registrarRutasRostro(app) {
         return res.status(400).json({ ok: false, codigo: 'sin_consentimiento', error: 'Para continuar debes aceptar la autorización de tratamiento de datos biométricos.' });
       }
       const usuario = await Usuario.findOne({ id_usuario: idUsuario });
+      if (usuario && !usuario.password) {
+        return res.status(403).json({ ok: false, codigo: 'sin_clave', error: 'Tu cuenta entró con Google y todavía no tiene contraseña. Crea una desde "¿Olvidaste tu contraseña?" en la pantalla de ingreso y vuelve aquí.' });
+      }
       if (!usuario || !(await verifyPassword(String(clave || ''), usuario.password))) {
         return res.status(403).json({ ok: false, codigo: 'clave_incorrecta', error: 'La contraseña no es correcta.' });
       }

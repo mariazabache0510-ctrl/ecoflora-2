@@ -1,9 +1,15 @@
-const { Usuario, Categoria, Planta, Pedido, Historial, Contacto, Carrito, RostroUsuario, nextId } = require('./models');
+const { Usuario, Categoria, Planta, Pedido, Historial, Contacto, Carrito, RostroUsuario, Recuperacion, nextId } = require('./models');
 const { hashPassword, verifyPassword, gastarTiempoDeVerificacion, CLAVE_MINIMA, MENSAJE_CLAVE_CORTA } = require('./passwords');
 const { getCartItems, addItem, updateQuantities, removeItem } = require('./cart');
 const { iniciarSesion, cerrarSesion, destinoTrasLogin } = require('./sesion');
 const rostro = require('./rostro');
 const { registrarRutasRostro } = require('./rutas-rostro');
+const { registrarRutasCuentas } = require('./rutas-cuentas');
+const { cerrarSesionesDe } = require('./recuperacion');
+const { leerDatos, yaExiste } = require('./usuarios');
+const federada = require('./federada');
+const { registrarRutasFederada } = require('./rutas-federada');
+const { registrarRutasSitios } = require('./rutas-sitios');
 const { placeOrder, StockError } = require('./orders');
 const { escapeRegex, ESTADOS } = require('./helpers');
 const { enviarMensajeContacto, enviarAvisoDomicilio } = require('./mailer');
@@ -68,6 +74,13 @@ async function withCategoryNames(plantas) {
 }
 
 function registerRoutes(app) {
+  // Google, recuperar contraseña y "Nuevo usuario" del admin. Va primero: /admin/usuarios/nuevo debe resolverse
+  // antes que /admin/usuarios/:id.
+  registrarRutasCuentas(app, { requireAdmin });
+  // Base federada Postgres + MySQL (Parte 2 del parcial).
+  registrarRutasFederada(app, { requireAdmin });
+  registrarRutasSitios(app);
+
   app.get('/', async (req, res, next) => {
     try {
       const categorias = await Categoria.find().sort({ id_categoria: 1 }).limit(5).lean();
@@ -180,7 +193,8 @@ function registerRoutes(app) {
   });
 
   app.get('/login', (req, res) => {
-    res.render('login', { error: '' });
+    const exito = req.query.clave === 'cambiada' ? 'Listo: tu contraseña se cambió. Ya puedes ingresar con la nueva.' : '';
+    res.render('login', { error: '', exito });
   });
 
   app.post('/login', async (req, res, next) => {
@@ -197,7 +211,8 @@ function registerRoutes(app) {
       }
       const user = await Usuario.findOne({ $or: [{ usuario }, { email: usuario }] }).collation(collation);
       // Si el usuario no existe se compara igual (contra un hash inventado) para tardar lo mismo.
-      const ok = user
+      // (Una cuenta creada con Google sin contraseña también gasta el mismo tiempo: no se nota la diferencia.)
+      const ok = user && user.password
         ? await verifyPassword(password, user.password)
         : await gastarTiempoDeVerificacion(password);
       if (!ok) {
@@ -221,16 +236,15 @@ function registerRoutes(app) {
 
   app.post('/registro', async (req, res, next) => {
     try {
-      const nombre = String(req.body.nombre || '').trim();
-      const usuario = String(req.body.usuario || '').trim();
-      const email = String(req.body.email || '').trim();
-      const telefono = String(req.body.telefono || '').trim();
-      const direccion = String(req.body.direccion || '').trim();
-      const ciudad = String(req.body.ciudad || '').trim();
+      const { datos, error: errorDatos } = leerDatos(req.body, { creando: true });
+      const { nombre, usuario, email, telefono, direccion, ciudad } = datos;
       const password = String(req.body.password || '').trim();
       const confirmar = String(req.body.confirmar || '').trim();
       if (!nombre || !usuario || !email || !password) {
         return res.render('registro', { error: 'Los campos con * son obligatorios.', exito: '' });
+      }
+      if (errorDatos) {
+        return res.render('registro', { error: errorDatos, exito: '' });
       }
       if (password !== confirmar) {
         return res.render('registro', { error: 'Las contraseñas no coinciden.', exito: '' });
@@ -238,8 +252,10 @@ function registerRoutes(app) {
       if (password.length < CLAVE_MINIMA) {
         return res.render('registro', { error: MENSAJE_CLAVE_CORTA, exito: '' });
       }
-      const exists = await Usuario.findOne({ $or: [{ usuario }, { email }] }).collation(collation);
-      if (exists) {
+      if (password.length > 200) {
+        return res.render('registro', { error: 'La contraseña es demasiado larga.', exito: '' });
+      }
+      if (await yaExiste({ usuario, email })) {
         return res.render('registro', { error: 'El usuario o email ya están registrados.', exito: '' });
       }
       const id = await nextId('usuarios');
@@ -342,6 +358,9 @@ function registerRoutes(app) {
       }
       const pedido = await placeOrder(req.session.id_usuario, items, { direccion, ciudad, telefono, notas });
       avisarDomicilio(pedido, req.session.id_usuario);
+      // Sistema de información (Parte 2): cliente y productos a Postgres, factura a MySQL. En segundo plano: un servidor
+      // caído no frena ni cancela el pedido.
+      federada.registrarPedido(pedido);
       const destino = req.session.rol === 'cliente' ? '/usuario/domicilios?exito=1' : '/admin/pedidos';
       return res.redirect(destino);
     } catch (error) {
@@ -395,6 +414,7 @@ function registerRoutes(app) {
         rostroDisponible: rostro.disponible(),
         rostroActivo: Boolean(registroRostro),
         actualizado: req.query.actualizado === '1',
+        bienvenida: req.query.bienvenida === '1',
         error: typeof req.query.error === 'string' ? req.query.error : ''
       });
     } catch (error) {
@@ -453,6 +473,7 @@ function registerRoutes(app) {
         usuarios,
         eliminado: req.query.eliminado === '1',
         actualizado: req.query.actualizado === '1',
+        creado: req.query.creado === '1',
         error: typeof req.query.error === 'string' ? req.query.error : ''
       });
     } catch (error) {
@@ -465,7 +486,7 @@ function registerRoutes(app) {
       const id = parseInt(req.params.id, 10) || 0;
       const usuario = await Usuario.findOne({ id_usuario: id }).lean();
       if (!usuario) return res.redirect('/admin/usuarios');
-      return res.render('admin/editar', { usuario });
+      return res.render('admin/editar', { usuario, nuevo: false, error: '' });
     } catch (error) {
       return next(error);
     }
@@ -474,26 +495,28 @@ function registerRoutes(app) {
   app.post('/admin/usuarios/:id', requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id, 10) || 0;
-      const nombre = String(req.body.nombre || '').trim();
-      const usuario = String(req.body.usuario || '').trim();
-      const email = String(req.body.email || '').trim();
-      const telefono = String(req.body.telefono || '').trim();
-      const direccion = String(req.body.direccion || '').trim();
-      const ciudad = String(req.body.ciudad || '').trim();
+      const { datos, error: errorDatos } = leerDatos(req.body);
+      const { nombre, usuario, email, telefono, direccion, ciudad } = datos;
       const rol = req.body.rol === 'admin' ? 'admin' : 'cliente';
       const password = String(req.body.password || '').trim();
-      if (!nombre || !usuario || !email) {
-        return res.redirect('/admin/usuarios?error=' + encodeURIComponent('No se pudo actualizar'));
+      if (errorDatos) {
+        return res.redirect('/admin/usuarios?error=' + encodeURIComponent(errorDatos));
       }
-      const taken = await Usuario.findOne({
-        id_usuario: { $ne: id },
-        $or: [{ usuario }, { email }]
-      }).collation(collation);
-      if (taken) {
+      if (await yaExiste({ usuario, email }, id)) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('El usuario o email ya están registrados'));
       }
       if (password && password.length < CLAVE_MINIMA) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('La nueva contraseña debe tener al menos ' + CLAVE_MINIMA + ' caracteres'));
+      }
+      if (password.length > 200) {
+        return res.redirect('/admin/usuarios?error=' + encodeURIComponent('La contraseña es demasiado larga'));
+      }
+      // Siempre debe quedar al menos un administrador.
+      if (rol !== 'admin') {
+        const actual = await Usuario.findOne({ id_usuario: id }, { rol: 1 }).lean();
+        if (actual && actual.rol === 'admin' && !(await Usuario.exists({ rol: 'admin', id_usuario: { $ne: id } }))) {
+          return res.redirect('/admin/usuarios?error=' + encodeURIComponent('Debe quedar al menos un administrador'));
+        }
       }
       const update = { nombre, usuario, email, telefono, direccion, ciudad, rol };
       if (password) update.password = await hashPassword(password);
@@ -501,6 +524,8 @@ function registerRoutes(app) {
       if (!result.matchedCount) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('No se pudo actualizar'));
       }
+      // Si el admin cambió la contraseña de otra cuenta, sus sesiones abiertas se cierran (la propia se conserva).
+      if (password) await cerrarSesionesDe(id, { excepto: id === req.session.id_usuario ? req.sessionID : undefined });
       // Una cuenta admin entra solo con contraseña: si se asciende a alguien, se borra su rostro guardado.
       if (rol === 'admin') await RostroUsuario.deleteOne({ id_usuario: id });
       if (id === req.session.id_usuario) {
@@ -524,12 +549,14 @@ function registerRoutes(app) {
       }
       await Carrito.deleteOne({ id_usuario: id });
       await RostroUsuario.deleteOne({ id_usuario: id });
+      await Recuperacion.deleteMany({ id_usuario: id });
       await Historial.deleteMany({ id_usuario: id });
       await Pedido.deleteMany({ id_usuario: id });
       const result = await Usuario.deleteOne({ id_usuario: id });
       if (!result.deletedCount) {
         return res.redirect('/admin/usuarios?error=' + encodeURIComponent('No se pudo eliminar'));
       }
+      await cerrarSesionesDe(id);
       return res.redirect('/admin/usuarios?eliminado=1');
     } catch (error) {
       return next(error);
@@ -551,6 +578,7 @@ function registerRoutes(app) {
         const estado = String(req.body.estado || '');
         if (ESTADOS.includes(estado)) {
           await Pedido.updateOne({ id_pedido: id }, { $set: { estado } });
+          federada.actualizarEstado(id, estado);
         }
       }
       res.redirect('/admin/pedidos');

@@ -16,15 +16,21 @@ const usuarioSchema = new mongoose.Schema(
     nombre: { type: String, required: true },
     usuario: { type: String, required: true },
     email: { type: String, required: true },
-    password: { type: String, required: true },
+    // Vacía en las cuentas creadas con Google que todavía no eligieron una contraseña (no pueden entrar con clave).
+    password: { type: String, default: '' },
     telefono: { type: String, default: '' },
     direccion: { type: String, default: '' },
     ciudad: { type: String, default: '' },
     rol: { type: String, enum: ['cliente', 'admin'], default: 'cliente' },
+    // Cómo se creó la cuenta: con el formulario del sitio o con "Continuar con Google" (google_id es el "sub" de Google).
+    proveedor: { type: String, enum: ['local', 'google'], default: 'local' },
+    google_id: { type: String },
     fecha_registro: { type: Date, default: Date.now }
   },
   { versionKey: false, collection: 'usuarios' }
 );
+// Único solo cuando existe (las cuentas sin Google no tienen el campo).
+usuarioSchema.index({ google_id: 1 }, { unique: true, partialFilterExpression: { google_id: { $type: 'string' } } });
 usuarioSchema.index({ usuario: 1 }, { unique: true, collation: { locale: 'es', strength: 2 } });
 usuarioSchema.index({ email: 1 }, { unique: true, collation: { locale: 'es', strength: 2 } });
 
@@ -153,6 +159,19 @@ const rostroUsuarioSchema = new mongoose.Schema(
   { versionKey: false, collection: 'rostros_usuarios' }
 );
 
+// Enlaces para recuperar la contraseña. Se guarda solo el SHA-256 del token (el token real viaja únicamente por correo):
+// aunque alguien leyera la base, no podría armar el enlace. Mongo borra solo los vencidos (índice TTL).
+const recuperacionSchema = new mongoose.Schema(
+  {
+    id_usuario: { type: Number, required: true, index: true },
+    token_hash: { type: String, required: true, unique: true },
+    vence: { type: Date, required: true },
+    creado: { type: Date, default: Date.now }
+  },
+  { versionKey: false, collection: 'recuperaciones' }
+);
+recuperacionSchema.index({ vence: 1 }, { expireAfterSeconds: 0 });
+
 const Counter = mongoose.model('Counter', counterSchema);
 const Meta = mongoose.model('Meta', metaSchema);
 const Usuario = mongoose.model('Usuario', usuarioSchema);
@@ -163,6 +182,7 @@ const Pedido = mongoose.model('Pedido', pedidoSchema);
 const Historial = mongoose.model('Historial', historialSchema);
 const Contacto = mongoose.model('Contacto', contactoSchema);
 const RostroUsuario = mongoose.model('RostroUsuario', rostroUsuarioSchema);
+const Recuperacion = mongoose.model('Recuperacion', recuperacionSchema);
 
 async function nextId(name, session) {
   const options = { new: true, upsert: true, setDefaultsOnInsert: true };
@@ -192,6 +212,7 @@ module.exports = {
   Historial,
   Contacto,
   RostroUsuario,
+  Recuperacion,
   nextId,
   syncCounter
 };

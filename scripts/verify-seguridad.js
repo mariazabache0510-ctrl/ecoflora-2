@@ -417,7 +417,13 @@ async function pruebaPaginas(app) {
   assert(/'nonce-/.test(scriptSrc) && !/unsafe-inline|(?<!wasm-)unsafe-eval/.test(scriptSrc), 'script-src usa nonce y no permite unsafe-inline ni unsafe-eval');
   assert(/'wasm-unsafe-eval'/.test(scriptSrc), "script-src permite compilar WebAssembly ('wasm-unsafe-eval'), que usa el motor del rostro");
   assert(/script-src-attr 'none'/.test(csp), 'script-src-attr está en none (sin onclick="" ni similares)');
-  assert(/connect-src 'self'/.test(csp) && /img-src 'self' data:/.test(csp), 'fetch e imágenes solo al propio sitio');
+  const directiva = (nombre) => ((csp.match(new RegExp(`(?:^|;\\s*)${nombre} ([^;]+)`)) || [])[1] || '').split(/\s+/).filter(Boolean);
+  const externos = (nombre) => directiva(nombre).filter((fuente) => /^https?:/.test(fuente));
+  const SOLO_GOOGLE = /^https:\/\/(\*\.)?(googleapis|gstatic|google|googleusercontent)\.com(\/|$)|^https:\/\/maps\.(googleapis|gstatic)\.com$|^https:\/\/accounts\.google\.com\/gsi\//;
+  assert(directiva('connect-src')[0] === "'self'" && directiva('img-src').slice(0, 2).join(' ') === "'self' data:", 'fetch e imágenes empiezan por el propio sitio');
+  assert(['connect-src', 'img-src', 'frame-src'].every((nombre) => externos(nombre).every((fuente) => SOLO_GOOGLE.test(fuente)) && !directiva(nombre).includes('*')), 'fetch, imágenes y marcos solo permiten dominios de Google (botón de acceso y mapa), sin comodines abiertos');
+  assert(externos('frame-src').join(' ') === 'https://accounts.google.com/gsi/', 'el único marco permitido es el del botón de Google');
+  assert(externos('script-src').filter((fuente) => !/jsdelivr/.test(fuente)).every((fuente) => /^https:\/\/(accounts\.google\.com\/gsi\/client|maps\.googleapis\.com|maps\.gstatic\.com)$/.test(fuente)), 'los únicos scripts externos extra son los de Google (acceso y mapa)');
   assert(!/upgrade-insecure-requests/.test(csp) && !h.get('strict-transport-security'), 'en desarrollo (http) NO se fuerza https ni HSTS');
   assert(h.get('x-content-type-options') === 'nosniff' && !h.get('x-powered-by') && /strict-origin/.test(h.get('referrer-policy') || ''), 'nosniff, sin X-Powered-By y Referrer-Policy estricta');
   assert(/camera=\(self\)/.test(h.get('permissions-policy') || ''), 'la cámara solo se permite al propio sitio (Permissions-Policy)');

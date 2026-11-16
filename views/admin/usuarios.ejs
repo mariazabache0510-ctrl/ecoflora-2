@@ -10,6 +10,7 @@
     </div>
 
     <% if (eliminado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Usuario eliminado correctamente.</div><% } %>
+    <% if (creado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Usuario creado correctamente.</div><% } %>
     <% if (actualizado) { %><div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Usuario actualizado correctamente.</div><% } %>
     <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
 
@@ -23,7 +24,7 @@
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="avatar-tabla"><%= String(usuario.nombre || usuario.usuario || '?').trim().charAt(0).toUpperCase() %></span>
-                                <span><%= usuario.nombre %></span>
+                                <span><%= usuario.nombre %><% if (usuario.proveedor === 'google') { %><span class="badge-google" title="Se registró con Google"><i class="bi bi-google"></i> Google</span><% } %></span>
                             </div>
                         </td>
                         <td><%= usuario.usuario %></td>
@@ -49,6 +50,7 @@
 
     <div class="acciones-pie">
         <a href="/admin" class="btn btn-suave"><i class="bi bi-arrow-left me-2"></i>Volver al panel</a>
+        <a href="/admin/usuarios/nuevo" class="btn btn-tierra"><i class="bi bi-person-plus me-2"></i>Nuevo usuario</a>
     </div>
 </div>
 

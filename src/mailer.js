@@ -232,4 +232,52 @@ function enviarAvisoDomicilio(pedido, cliente) {
   return armarYEnviar(() => armarCorreoDomicilio(pedido, cliente));
 }
 
-module.exports = { enviarMensajeContacto, enviarAvisoDomicilio, armarCorreo, armarCorreoDomicilio, fechaColombia };
+// Correo para quien olvidó su contraseña: lleva el enlace de un solo uso (vale 30 minutos).
+function armarCorreoRecuperacion(cliente, enlace, minutos) {
+  const nombre = limpiarLinea(cliente.nombre, 100) || 'Hola';
+  const para = limpiarLinea(cliente.email, 150);
+  const subject = '[EcoFlora] Recupera tu contraseña';
+
+  const texto = [
+    `Hola ${nombre},`,
+    '',
+    'Recibimos una solicitud para cambiar la contraseña de tu cuenta de EcoFlora.',
+    `Abre este enlace para elegir una nueva (vale ${minutos} minutos y solo se puede usar una vez):`,
+    '',
+    enlace,
+    '',
+    'Si tú no lo pediste, ignora este correo: tu contraseña actual sigue funcionando.'
+  ].join('\n');
+
+  const html = `<!doctype html><html><body style="margin:0;background:#eef7f0;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:520px;margin:0 auto;padding:24px">
+  <div style="background:linear-gradient(135deg,#1b4332,#2d6a4f);color:#fff;padding:20px 24px;border-radius:16px 16px 0 0">
+    <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.8">EcoFlora Vivero</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px">Recupera tu contraseña</div>
+  </div>
+  <div style="background:#fff;padding:22px 24px;border-radius:0 0 16px 16px;box-shadow:0 8px 24px rgba(27,67,50,.12);color:#1b4332;font-size:15px;line-height:1.55">
+    <p style="margin:0 0 12px">Hola ${escapeHtml(nombre)},</p>
+    <p style="margin:0 0 18px">Recibimos una solicitud para cambiar la contraseña de tu cuenta. El enlace vale <strong>${escapeHtml(minutos)} minutos</strong> y solo se puede usar una vez.</p>
+    <p style="margin:0 0 18px"><a href="${escapeHtml(enlace)}" style="display:inline-block;background:#2d6a4f;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">Elegir una contraseña nueva</a></p>
+    <p style="margin:0 0 6px;font-size:13px;color:#52705f">Si el botón no abre, copia esta dirección en tu navegador:<br><span style="word-break:break-all">${escapeHtml(enlace)}</span></p>
+    <p style="margin:14px 0 0;font-size:13px;color:#52705f">Si tú no lo pediste, ignora este correo: tu contraseña actual sigue funcionando.</p>
+  </div>
+</div></body></html>`;
+
+  return { from: remitente(), to: [para], subject, text: texto, html };
+}
+
+function enviarRecuperacion(cliente, enlace, minutos) {
+  return armarYEnviar(() => armarCorreoRecuperacion(cliente, enlace, minutos));
+}
+
+module.exports = {
+  enviarMensajeContacto,
+  enviarAvisoDomicilio,
+  enviarRecuperacion,
+  armarCorreo,
+  armarCorreoDomicilio,
+  armarCorreoRecuperacion,
+  urlPublica,
+  fechaColombia
+};

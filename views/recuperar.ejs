@@ -1,0 +1,36 @@
+<%- include(partial('header')) %>
+
+<div class="container contenedor-pagina">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-5 col-xl-4">
+            <div class="auth-tarjeta vidrio reveal">
+                <div class="auth-cabecera">
+                    <%- include(partial('logo'), { uid: 'recuperar' }) %>
+                    <h1>Recuperar contraseña</h1>
+                    <p>Te enviamos un enlace a tu correo para elegir una nueva</p>
+                </div>
+
+                <% if (error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+                <% if (exito) { %><div class="alert alert-success" role="status"><i class="bi bi-envelope-check me-2"></i><%= exito %></div><% } %>
+
+                <% if (!exito) { %>
+                <form method="POST" action="/recuperar">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <div class="mb-4">
+                        <label class="form-label" for="dato">Correo o usuario</label>
+                        <div class="campo">
+                            <i class="bi bi-envelope"></i>
+                            <input type="text" id="dato" name="dato" class="form-control" autocomplete="username" maxlength="150" value="<%= valor %>" required autofocus>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-ecoflora btn-lg w-100"><i class="bi bi-send me-2"></i>Enviarme el enlace</button>
+                </form>
+                <% } %>
+
+                <p class="auth-pie"><a href="/login">Volver a ingresar</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include(partial('footer')) %>

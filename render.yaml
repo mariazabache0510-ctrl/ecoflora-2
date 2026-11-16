@@ -25,3 +25,11 @@ services:
         sync: false
       - key: FACE_MATCH_THRESHOLD
         value: "0.5"
+      # Parcial final. Los valores se escriben en Render > Environment (nunca aquí).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: COCKROACH_URL
+        sync: false
+      # PG_URL y MYSQL_URL NO se definen en Render: la base federada (Docker) es solo local y allí queda apagada.

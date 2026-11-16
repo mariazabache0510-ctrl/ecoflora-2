@@ -1,18 +1,20 @@
 <%- include(partial('header')) %>
+<% const esNuevo = Boolean(locals.nuevo); %>
 
 <div class="container contenedor-pagina">
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-7">
             <div class="panel-cabecera panel-tierra reveal">
-                <span class="panel-icono"><i class="bi bi-pencil-square"></i></span>
+                <span class="panel-icono"><i class="bi bi-<%= esNuevo ? 'person-plus' : 'pencil-square' %>"></i></span>
                 <div>
-                    <h1>Editar Usuario</h1>
-                    <p><%= usuario.usuario %></p>
+                    <h1><%= esNuevo ? 'Nuevo Usuario' : 'Editar Usuario' %></h1>
+                    <p><%= esNuevo ? 'Crea una cuenta desde el panel' : usuario.usuario %><% if (usuario.proveedor === 'google') { %> <span class="badge-google"><i class="bi bi-google"></i> Cuenta de Google</span><% } %></p>
                 </div>
             </div>
 
             <div class="form-tarjeta vidrio reveal" style="--i: 1">
-                <form action="/admin/usuarios/<%= usuario.id_usuario %>" method="POST">
+                <% if (locals.error) { %><div class="alert alert-danger"><i class="bi bi-exclamation-circle me-2"></i><%= error %></div><% } %>
+                <form action="<%= esNuevo ? '/admin/usuarios/nuevo' : '/admin/usuarios/' + usuario.id_usuario %>" method="POST">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="mb-3">
                         <label class="form-label" for="nombre">Nombre completo</label>
@@ -50,16 +52,16 @@
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="password">Nueva contraseña</label>
+                        <label class="form-label" for="password"><%= esNuevo ? 'Contraseña' : 'Nueva contraseña' %></label>
                         <div class="campo con-ojo">
                             <i class="bi bi-lock"></i>
-                            <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" minlength="8">
+                            <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" minlength="8"<%= esNuevo ? ' required' : '' %>>
                             <button type="button" class="campo-ojo" data-ver-clave aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
                         </div>
-                        <div class="form-text">Déjala vacía si no deseas cambiarla. Si la cambias, mínimo 8 caracteres.</div>
+                        <div class="form-text"><%= esNuevo ? 'Mínimo 8 caracteres.' : 'Déjala vacía si no deseas cambiarla. Si la cambias, mínimo 8 caracteres.' %></div>
                     </div>
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-tierra btn-lg"><i class="bi bi-check2-circle me-2"></i>Actualizar usuario</button>
+                        <button type="submit" class="btn btn-tierra btn-lg"><i class="bi bi-check2-circle me-2"></i><%= esNuevo ? 'Crear usuario' : 'Actualizar usuario' %></button>
                         <a href="/admin/usuarios" class="btn btn-suave">Cancelar</a>
                     </div>
                 </form>

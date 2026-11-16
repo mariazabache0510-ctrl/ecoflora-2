@@ -9,6 +9,7 @@ const { registerRoutes } = require('./routes');
 const { contacto, whatsappDe } = require('./contacto');
 const { fechaColombia } = require('./mailer');
 const rostro = require('./rostro');
+const google = require('./google');
 const { NOMBRE_COOKIE, secretoDeSesion, opcionesCookie } = require('./entorno');
 const { protegerCsrf } = require('./csrf');
 const { encabezadosDeSeguridad, limpiarEntradas } = require('./seguridad');
@@ -50,6 +51,8 @@ function shouldRecord(req) {
   if (req.method !== 'GET') return false;
   if (req.get('x-requested-with')) return false;
   if (req.path === '/health' || req.path === '/logout') return false;
+  // El enlace de recuperar la contraseña lleva un token secreto en la ruta: nunca debe quedar en el historial.
+  if (req.path.startsWith('/recuperar/')) return false;
   if (path.extname(req.path)) return false;
   const accept = req.get('accept') || '';
   if (accept && !accept.includes('text/html') && !accept.includes('*/*')) return false;
@@ -158,6 +161,9 @@ function createApp() {
       res.locals.currentPath = req.path;
       // El inicio con rostro solo se ofrece si el sitio tiene su clave de cifrado configurada.
       res.locals.rostroDisponible = rostro.disponible();
+      // "Continuar con Google" solo aparece si el sitio tiene su ID de cliente de Google configurado.
+      res.locals.googleDisponible = google.disponible();
+      res.locals.googleClientId = google.clientId();
       res.locals.queryError = typeof req.query.error === 'string' ? req.query.error : '';
       next();
     } catch (error) {

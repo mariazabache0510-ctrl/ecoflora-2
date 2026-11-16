@@ -7,7 +7,9 @@
 //  - Estilos: propios, Bootstrap y Bootstrap Icons (jsDelivr), Google Fonts y estilos en línea (style="...").
 //  - Tipografías: Google Fonts y los iconos de Bootstrap Icons.
 //  - Imágenes: propias (fotos de plantas) y data: (iconos pequeños). La cámara no pasa por CSP.
-//  - Conexiones (fetch): solo al propio sitio, que también sirve la librería y los modelos del rostro.
+//  - Conexiones (fetch): al propio sitio (que también sirve la librería y los modelos del rostro) y a las APIs de Google
+//    que usa el mapa de /sitios.
+//  - Google (solo botón de acceso y mapa): accounts.google.com/gsi y maps.googleapis.com / maps.gstatic.com.
 //  - Nadie puede meter el sitio dentro de otra página (frame-ancestors 'none') ni enviar formularios a otro sitio.
 // Si algún día cambias la versión de Bootstrap en views/partials, actualiza también las rutas de abajo.
 
@@ -20,6 +22,10 @@ const JSDELIVR = 'https://cdn.jsdelivr.net';
 const BOOTSTRAP_JS = `${JSDELIVR}/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js`;
 const BOOTSTRAP_CSS = `${JSDELIVR}/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css`;
 const ICONOS_RUTA = `${JSDELIVR}/npm/bootstrap-icons@1.11.3/font/`;
+// Google: el botón "Continuar con Google" (Identity Services) y Google Maps (página /sitios). Solo estos dominios,
+// y solo para lo que cada uno necesita (guías oficiales de CSP de Google).
+const GOOGLE_GSI = 'https://accounts.google.com/gsi/';
+const GOOGLE_MAPS_SCRIPTS = ['https://maps.googleapis.com', 'https://maps.gstatic.com'];
 
 // Un valor al azar por respuesta: solo los <script nonce="..."> de nuestras vistas lo conocen.
 function nonceDeCsp(req, res, next) {
@@ -29,7 +35,7 @@ function nonceDeCsp(req, res, next) {
 
 function permisos(req, res, next) {
   // La cámara solo para este sitio (inicio con rostro); el resto de funciones del navegador, apagadas.
-  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self), payment=(), usb=()');
   next();
 }
 
@@ -44,12 +50,14 @@ function encabezadosDeSeguridad() {
           defaultSrc: ["'self'"],
           baseUri: ["'self'"],
           // 'wasm-unsafe-eval' solo permite compilar WebAssembly (el motor de cálculo del rostro); NO permite eval().
-          scriptSrc: ["'self'", "'wasm-unsafe-eval'", BOOTSTRAP_JS, (req, res) => `'nonce-${res.locals.cspNonce}'`],
+          scriptSrc: ["'self'", "'wasm-unsafe-eval'", BOOTSTRAP_JS, `${GOOGLE_GSI}client`, ...GOOGLE_MAPS_SCRIPTS, (req, res) => `'nonce-${res.locals.cspNonce}'`],
           scriptSrcAttr: ["'none'"],
-          styleSrc: ["'self'", "'unsafe-inline'", BOOTSTRAP_CSS, `${ICONOS_RUTA}bootstrap-icons.min.css`, 'https://fonts.googleapis.com/css2'],
+          styleSrc: ["'self'", "'unsafe-inline'", BOOTSTRAP_CSS, `${ICONOS_RUTA}bootstrap-icons.min.css`, 'https://fonts.googleapis.com/css2', 'https://fonts.googleapis.com/css', `${GOOGLE_GSI}style`],
           fontSrc: ["'self'", 'https://fonts.gstatic.com', `${ICONOS_RUTA}fonts/`],
-          imgSrc: ["'self'", 'data:'],
-          connectSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https://*.googleapis.com', 'https://*.gstatic.com', 'https://*.google.com', 'https://*.googleusercontent.com'],
+          connectSrc: ["'self'", 'https://*.googleapis.com', GOOGLE_GSI],
+          frameSrc: [GOOGLE_GSI],
+          workerSrc: ["'self'", 'blob:'],
           objectSrc: ["'none'"],
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
