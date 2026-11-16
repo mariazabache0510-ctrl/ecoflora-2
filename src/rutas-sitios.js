@@ -69,14 +69,20 @@ function publico(fila, sesion, nombres) {
 
 function registrarRutasSitios(app) {
   app.get('/sitios', requireLoginPagina, (req, res) => {
-    const llave = String(process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    // La llave de Maps NO se imprime en el HTML (así no aparece al ver el código fuente de la página).
+    // El JS la pide después a /api/sitios/mapa. Aun así debe estar restringida por dominio en Google Cloud.
     res.render('sitios', {
       disponible: sitios.habilitada(),
-      // La llave de Maps va en el navegador (es lo normal): por eso debe estar restringida por dominio en Google Cloud.
-      mapsKey: /^[\w-]{20,80}$/.test(llave) ? llave : '',
+      mapaConfigurado: /^[\w-]{20,80}$/.test(String(process.env.GOOGLE_MAPS_API_KEY || '').trim()),
       categorias: sitios.CATEGORIAS,
       esAdmin: req.session.rol === 'admin'
     });
+  });
+
+  // Entrega la llave de Maps solo a quien ya inició sesión. No se cachea.
+  app.get('/api/sitios/mapa', requireLoginJson, sinCache, (req, res) => {
+    const llave = String(process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    res.json({ ok: true, mapsKey: /^[\w-]{20,80}$/.test(llave) ? llave : '' });
   });
 
   app.get('/api/sitios', requireLoginJson, requireDisponible, sinCache, async (req, res) => {

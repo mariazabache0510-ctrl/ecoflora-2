@@ -15,14 +15,14 @@
 
     <div class="row g-4"
          data-sitios
-         data-maps-key="<%= mapsKey %>"
+         data-mapa="<%= mapaConfigurado ? '1' : '0' %>"
          data-csrf="<%= csrfToken %>"
          data-admin="<%= esAdmin ? '1' : '0' %>">
         <div class="col-lg-7 reveal">
             <div class="sitios-mapa vidrio" data-sitios-mapa>
                 <div class="sitios-mapa-aviso" data-sitios-aviso>
                     <i class="bi bi-map"></i>
-                    <% if (mapsKey) { %><span>Cargando el mapa…</span><% } else { %><span>El mapa todavía no está configurado en este sitio.<br>Aun así puedes guardar un sitio escribiendo sus coordenadas.</span><% } %>
+                    <% if (mapaConfigurado) { %><span>Cargando el mapa…</span><% } else { %><span>El mapa todavía no está configurado en este sitio.<br>Aun así puedes guardar un sitio escribiendo sus coordenadas.</span><% } %>
                 </div>
             </div>
             <p class="sitios-ayuda"><i class="bi bi-hand-index me-1"></i>Haz clic en el mapa para marcar un lugar. Puedes arrastrar el marcador para afinarlo.</p>

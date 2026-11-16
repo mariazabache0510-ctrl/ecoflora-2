@@ -7,7 +7,7 @@
     if (!raiz) return;
 
     var nonce = (document.currentScript && document.currentScript.nonce) || '';
-    var llaveMapa = raiz.getAttribute('data-maps-key') || '';
+    var mapaConfigurado = raiz.getAttribute('data-mapa') === '1';
     var csrf = raiz.getAttribute('data-csrf');
     var esAdmin = raiz.getAttribute('data-admin') === '1';
 
@@ -234,7 +234,7 @@
         dibujarMarcadores();
     };
 
-    function cargarGoogleMaps() {
+    function cargarGoogleMaps(llaveMapa) {
         if (!llaveMapa) return;
         var s = document.createElement('script');
         if (nonce) s.nonce = nonce;
@@ -244,6 +244,17 @@
             if (avisoMapa) avisoMapa.querySelector('span').textContent = 'No pudimos cargar Google Maps. Puedes guardar un sitio escribiendo sus coordenadas.';
         };
         document.head.appendChild(s);
+    }
+
+    // La llave no viene en el HTML: se pide al servidor después de cargar la página (así no aparece en "ver código fuente").
+    function pedirLlaveDelMapa() {
+        if (!mapaConfigurado) return;
+        api('GET', '/api/sitios/mapa').then(function (datos) {
+            if (datos && datos.ok && datos.mapsKey) cargarGoogleMaps(datos.mapsKey);
+            else if (avisoMapa) avisoMapa.querySelector('span').textContent = 'El mapa todavía no está configurado en este sitio. Aun así puedes guardar un sitio escribiendo sus coordenadas.';
+        }).catch(function () {
+            if (avisoMapa) avisoMapa.querySelector('span').textContent = 'No pudimos cargar Google Maps. Puedes guardar un sitio escribiendo sus coordenadas.';
+        });
     }
 
     // Si Google rechaza la llave (dominio no permitido, etc.), avisa aquí en vez de dejar un mapa gris.
@@ -310,5 +321,5 @@
     });
 
     cargar();
-    cargarGoogleMaps();
+    pedirLlaveDelMapa();
 })();

@@ -157,10 +157,13 @@ async function main() {
     const csrfAna = await ana.token();
     r = await ana.pedir('GET', '/sitios');
     assert(r.status === 200 && /data-sitios/.test(r.texto) && /Nuevo sitio/.test(r.texto), '/sitios muestra el mapa y el formulario');
-    assert(r.texto.includes(`data-maps-key="${LLAVE_MAPS}"`), 'la llave de Google Maps llega a la vista desde la variable de entorno');
+    assert(/data-mapa="1"/.test(r.texto) && !r.texto.includes(LLAVE_MAPS), 'la página marca que hay mapa, pero la llave NO está en el HTML');
     assert(/src="\/js\/sitios\.js" nonce="/.test(r.texto), 'el script de la página lleva nonce (CSP)');
     assert(/maps\.googleapis\.com/.test(r.cabeceras.get('content-security-policy')), 'la CSP permite cargar Google Maps');
     assert(/Mis sitios/.test(r.texto) && !/Todos los sitios/.test(r.texto), 'la clienta ve "Mis sitios"');
+    const mapaApi = await ana.pedir('GET', '/api/sitios/mapa');
+    assert(mapaApi.status === 200 && mapaApi.datos.ok && mapaApi.datos.mapsKey === LLAVE_MAPS, 'la llave de Maps solo llega por /api/sitios/mapa (con sesión)');
+    assert((await invitado.pedir('GET', '/api/sitios/mapa')).status === 401, 'sin sesión no se entrega la llave del mapa');
 
     r = await ana.pedir('GET', '/api/sitios');
     assert(r.status === 200 && r.datos.ok && r.datos.sitios.length === 0, 'la lista empieza vacía');
@@ -309,10 +312,12 @@ async function main() {
     titulo('Llave de Maps');
     process.env.GOOGLE_MAPS_API_KEY = 'llave" onload="alert(1)';
     r = await ana.pedir('GET', '/sitios');
-    assert(r.status === 200 && !r.texto.includes('onload="alert') && /data-maps-key=""/.test(r.texto), 'una llave con caracteres raros no se inyecta en la página');
+    assert(r.status === 200 && !r.texto.includes('onload="alert') && /data-mapa="0"/.test(r.texto) && !r.texto.includes('onload'), 'una llave con caracteres raros no se inyecta en la página');
     delete process.env.GOOGLE_MAPS_API_KEY;
     r = await ana.pedir('GET', '/sitios');
-    assert(r.status === 200 && /todavía no está configurado/.test(r.texto), 'sin llave el mapa avisa y el formulario sigue usable con coordenadas');
+    assert(r.status === 200 && /todavía no está configurado/.test(r.texto) && /data-mapa="0"/.test(r.texto), 'sin llave el mapa avisa y el formulario sigue usable con coordenadas');
+    r = await ana.pedir('GET', '/api/sitios/mapa');
+    assert(r.status === 200 && r.datos.mapsKey === '', 'sin llave configurada, la API del mapa entrega cadena vacía');
     r = await ana.pedir('GET', '/usuario/perfil');
     assert(/href="\/sitios"/.test(r.texto), 'el menú tiene el enlace "Sitios de interés"');
 

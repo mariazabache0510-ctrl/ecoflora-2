@@ -10,7 +10,7 @@ const { contacto, whatsappDe } = require('./contacto');
 const { fechaColombia } = require('./mailer');
 const rostro = require('./rostro');
 const google = require('./google');
-const { NOMBRE_COOKIE, secretoDeSesion, opcionesCookie } = require('./entorno');
+const { NOMBRE_COOKIE, secretoDeSesion, opcionesCookie, esProduccion } = require('./entorno');
 const { protegerCsrf } = require('./csrf');
 const { encabezadosDeSeguridad, limpiarEntradas } = require('./seguridad');
 const {
@@ -161,14 +161,28 @@ function createApp() {
       res.locals.currentPath = req.path;
       // El inicio con rostro solo se ofrece si el sitio tiene su clave de cifrado configurada.
       res.locals.rostroDisponible = rostro.disponible();
-      // "Continuar con Google" solo aparece si el sitio tiene su ID de cliente de Google configurado.
-      res.locals.googleDisponible = google.disponible();
-      res.locals.googleClientId = google.clientId();
+      // El ID de Google SOLO se imprime en /login y /registro (donde está el botón). En el resto de
+      // páginas no aparece en el HTML (ni al ver el código fuente del navegador).
+      const enEntradaGoogle = google.disponible() && (req.path === '/login' || req.path === '/registro');
+      res.locals.googleDisponible = enEntradaGoogle;
+      res.locals.googleClientId = enEntradaGoogle ? google.clientId() : '';
       res.locals.queryError = typeof req.query.error === 'string' ? req.query.error : '';
       next();
     } catch (error) {
       next(error);
     }
+  });
+
+  // En producción las páginas HTML no se cachean (así un token CSRF viejo no queda guardado en el navegador).
+  // Los archivos estáticos (/css, /js, /img) siguen con su propia caché.
+  app.use((req, res, next) => {
+    if (!esProduccion()) return next();
+    const original = res.render.bind(res);
+    res.render = (...args) => {
+      res.setHeader('Cache-Control', 'no-store');
+      return original(...args);
+    };
+    return next();
   });
 
   // CSRF: reparte el token a las vistas y exige el token correcto en todo POST (va después de las
@@ -201,7 +215,12 @@ function createApp() {
     if (error && error.type === 'entity.parse.failed') {
       return res.status(400).send('La solicitud no es válida.');
     }
+    // El detalle del error (stack, rutas, variables) SOLO va al log del servidor. Al navegador, un mensaje genérico.
     console.error(error);
+    const quiereJson = /application\/json|\*\/\*/i.test(String(req.get('accept') || '')) && /\/api\//.test(req.path);
+    if (quiereJson) {
+      return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+    }
     return res.status(500).send('Error interno del servidor.');
   });
 

@@ -69,7 +69,12 @@ function encabezadosDeSeguridad() {
       // Sin includeSubDomains: así no afecta a otros subdominios que algún día uses con tu dominio propio.
       strictTransportSecurity: produccion ? { maxAge: 15552000, includeSubDomains: false } : false,
       xFrameOptions: { action: 'deny' },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      // No se publica el nombre del framework (Express) ni se permite incrustar nuestras respuestas en otro origen.
+      xPoweredBy: false,
+      crossOriginResourcePolicy: { policy: 'same-origin' },
+      // same-origin-allow-popups: el botón de Google puede abrir su ventana; nadie más embebe la nuestra.
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
     }),
     permisos
   ];
