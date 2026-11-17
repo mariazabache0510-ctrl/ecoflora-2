@@ -30,13 +30,24 @@
 }
 
 /* ---------- Base ---------- */
-html { scroll-behavior: smooth; }
+html {
+    scroll-behavior: smooth;
+    margin: 0;
+    padding: 0;
+    /* Al hacer overscroll (rebote en Mac/móvil) se ve este color, no un “hueco” claro u oscuro. */
+    background-color: var(--verde-oscuro);
+    overscroll-behavior-y: none;
+}
 body {
+    margin: 0;
+    padding: 0;
     font-family: var(--fuente-texto);
     color: var(--texto);
     background: #e9f6ec;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
 }
 body.saliendo main { opacity: 0; translate: 0 -8px; transition: opacity 0.18s ease, translate 0.18s ease; }
@@ -54,7 +65,8 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 :focus-visible { outline: 3px solid rgba(82, 183, 136, 0.7); outline-offset: 3px; }
 
 /* ---------- Fondo vivo: jardín ---------- */
-.jardin { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; --sy: 0; }
+/* inset negativo: el jardín sigue cubriendo si el sistema hace un rebote de scroll. */
+.jardin { position: fixed; inset: -30vmax; z-index: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; --sy: 0; }
 .jardin-cielo { position: absolute; inset: 0; background: linear-gradient(180deg, #f6fcf7 0%, #e6f6ea 46%, #d3eedb 100%); }
 .jardin-brillo { position: absolute; width: 62vmax; height: 62vmax; border-radius: 50%; opacity: 0.6; will-change: transform; }
 .jardin-brillo-a {
@@ -109,6 +121,15 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.09);
     transition: box-shadow 0.35s, background 0.35s;
+}
+/* Cubre cualquier hueco encima del navbar al rebotar el scroll (sticky a veces “salta”). */
+.nav-eco::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 100%;
+    height: 50vmax;
+    background: #1b4332;
+    pointer-events: none;
 }
 .nav-eco .navbar { padding: 0.85rem 0; transition: padding 0.3s var(--curva); }
 .nav-eco.compacta { box-shadow: 0 12px 32px rgba(10, 35, 25, 0.3); }
@@ -775,7 +796,16 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .alert-warning { background: #fff5d9; color: #8a5a00; border-left-color: #f4b942; }
 
 /* ---------- Pie de página ---------- */
-.pie-eco { margin-top: 4rem; color: rgba(255, 255, 255, 0.82); }
+.pie-eco { position: relative; margin-top: 4rem; color: rgba(255, 255, 255, 0.82); }
+/* Cubre el hueco debajo del footer al llegar al final del scroll. */
+.pie-eco::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    height: 50vmax;
+    background: #12301f;
+    pointer-events: none;
+}
 .pie-ola { position: relative; height: 70px; overflow: hidden; margin-bottom: -2px; }
 .pie-ola svg { position: absolute; left: 0; bottom: 0; width: 200%; height: 100%; }
 .pie-ola svg:first-child { animation: ola 22s linear infinite; }
