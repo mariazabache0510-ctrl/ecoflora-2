@@ -34,8 +34,8 @@ html {
     scroll-behavior: smooth;
     margin: 0;
     padding: 0;
-    /* Al hacer overscroll (rebote en Mac/móvil) se ve este color, no un “hueco” claro u oscuro. */
-    background-color: var(--verde-oscuro);
+    /* Mismo tono que el final del footer: si el sistema hace rebote, no se ve un hueco claro ni el escritorio. */
+    background-color: #12301f;
     overscroll-behavior-y: none;
 }
 body {
@@ -120,9 +120,11 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.09);
     transition: box-shadow 0.35s, background 0.35s;
+    /* Sombra hacia arriba: tapa el hueco al rebotar en el tope SIN alargar el scroll (a diferencia de ::before con height). */
+    box-shadow: 0 -100vh 0 0 #1b4332;
 }
 .nav-eco .navbar { padding: 0.85rem 0; transition: padding 0.3s var(--curva); }
-.nav-eco.compacta { box-shadow: 0 12px 32px rgba(10, 35, 25, 0.3); }
+.nav-eco.compacta { box-shadow: 0 -100vh 0 0 #1b4332, 0 12px 32px rgba(10, 35, 25, 0.3); }
 .nav-eco.compacta .navbar { padding: 0.35rem 0; }
 .nav-progreso {
     position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; opacity: 0.85;
@@ -793,7 +795,12 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .pie-ola svg:last-child { animation: ola 15s linear infinite reverse; }
 .ola-1 { fill: rgba(45, 106, 79, 0.55); }
 .ola-2 { fill: #1b4332; }
-.pie-cuerpo { background: linear-gradient(180deg, #1b4332, #12301f); padding: 1.25rem 0 1rem; }
+/* box-shadow (no ::after con height): el verde sigue bajo el pie al rebotar el scroll, sin crear una franja scrolleable. */
+.pie-cuerpo {
+    background: linear-gradient(180deg, #1b4332, #12301f);
+    box-shadow: 0 100vh 0 0 #12301f;
+    padding: 1.25rem 0 max(1rem, env(safe-area-inset-bottom, 0px));
+}
 .marca-pie .marca-nombre-pie { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.6rem; color: var(--crema); line-height: 1; }
 .marca-pie .marca-texto { overflow: visible; padding-top: 0; margin-top: 0; }
 .marca-pie .marca-texto::after { display: none; }
