@@ -895,7 +895,13 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
     background: conic-gradient(from -90deg, #ffffff calc(var(--progreso) * 360deg), transparent 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
 }
-.rostro-circulo { position: absolute; inset: 14px; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #eaf8ee, #95d5b2 78%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75), 0 10px 30px rgba(27, 67, 50, 0.22); }
+.rostro-circulo {
+    position: absolute; inset: 14px; overflow: hidden; border-radius: 50%;
+    /* clip-path evita que blur/video se dibujen en cuadrado por encima del anillo (bug de backdrop-filter). */
+    -webkit-clip-path: circle(50%); clip-path: circle(50%);
+    background: radial-gradient(circle at 50% 30%, #eaf8ee, #95d5b2 78%);
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75), 0 10px 30px rgba(27, 67, 50, 0.22);
+}
 .rostro-video, .rostro-malla { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .rostro-video { opacity: 0; transition: opacity 0.6s; }
 .rostro-camara:is([data-estado="reto"], [data-estado="capturando"], [data-estado="verificando"], [data-estado="exito"], [data-estado="error"]) .rostro-video { opacity: 1; }
@@ -919,12 +925,23 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
    jardín (hojas, mariposas, brillos) se pausa desde rostro.js con la clase rostro-pausa. */
 .rostro-camara:is([data-estado="reto"], [data-estado="capturando"]) .rostro-marco::after { animation: none; opacity: 0.85; }
 .jardin.rostro-pausa, .jardin.rostro-pausa * { animation-play-state: paused !important; }
-.rostro-camara[data-estado="exito"] .rostro-anillo { opacity: 1; background: conic-gradient(#2fbf71, #95d5b2, #2fbf71); filter: drop-shadow(0 0 10px rgba(47, 191, 113, 0.8)); animation: rostro-destello 1.6s ease-out 1; }
-.rostro-camara[data-estado="error"] .rostro-anillo { opacity: 1; background: conic-gradient(#e5738f, #f4b6c4, #e5738f); filter: drop-shadow(0 0 8px rgba(229, 115, 143, 0.6)); }
+/* El resplandor va en ::after (ya es un círculo), no en filter:drop-shadow del anillo:
+   con máscara CSS el drop-shadow a veces se pinta en cuadrado y tapa el borde. */
+.rostro-camara[data-estado="exito"] .rostro-anillo { opacity: 1; background: conic-gradient(#2fbf71, #95d5b2, #2fbf71); filter: none; animation: rostro-destello 1.6s ease-out 1; }
+.rostro-camara[data-estado="exito"] .rostro-marco::after { background: radial-gradient(circle, rgba(47, 191, 113, 0.5), rgba(47, 191, 113, 0) 70%); opacity: 1; animation: none; }
+.rostro-camara[data-estado="error"] .rostro-anillo { opacity: 1; background: conic-gradient(#e5738f, #f4b6c4, #e5738f); filter: none; }
+.rostro-camara[data-estado="error"] .rostro-marco::after { background: radial-gradient(circle, rgba(229, 115, 143, 0.48), rgba(229, 115, 143, 0) 70%); opacity: 1; animation: none; }
 .rostro-camara[data-estado="error"] .rostro-marco { animation: rostro-sacude 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1; }
-/* Resultado: hoja que florece (éxito) u hoja marchita (error) */
-.rostro-resultado { position: absolute; inset: 0; z-index: 2; display: none; place-items: center; background: rgba(255, 255, 255, 0.8); -webkit-backdrop-filter: blur(10px) saturate(130%); backdrop-filter: blur(10px) saturate(130%); }
-.rostro-resultado svg { width: 72%; height: 72%; overflow: visible; }
+/* Resultado: hoja que florece (éxito) u hoja marchita (error).
+   Sin backdrop-filter: en WebKit/Blink el blur se dibuja en rectángulo y cubre el anillo circular. */
+.rostro-resultado {
+    position: absolute; inset: 0; z-index: 2; display: none; place-items: center;
+    border-radius: 50%; overflow: hidden;
+    -webkit-clip-path: circle(50%); clip-path: circle(50%);
+    background: rgba(255, 252, 248, 0.92);
+}
+.rostro-camara[data-estado="error"] .rostro-fallo { background: rgba(255, 240, 244, 0.94); }
+.rostro-resultado svg { width: 72%; height: 72%; overflow: hidden; }
 .rostro-camara[data-estado="exito"] .rostro-ok, .rostro-camara[data-estado="error"] .rostro-fallo { display: grid; animation: rostro-aparece 0.5s ease-out both; }
 .rostro-ok::before { content: ''; position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; margin: -15% 0 0 -15%; border-radius: 50%; border: 3px solid rgba(47, 191, 113, 0.5); opacity: 0; }
 .rostro-camara[data-estado="exito"] .rostro-ok::before { animation: rostro-onda 1.5s 0.5s ease-out 1 both; }
