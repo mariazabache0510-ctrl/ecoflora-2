@@ -33,6 +33,71 @@
     var marcadores = {};
     var ventana = null;
     var sitios = [];
+    var saltoId = 0;
+    var ICONO_NUEVO = null;
+
+    function iconoNuevo(saltoPx) {
+        if (!ICONO_NUEVO) {
+            ICONO_NUEVO = {
+                url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                scaledSize: new google.maps.Size(32, 32),
+                anchor: new google.maps.Point(16, 32)
+            };
+        }
+        var anclaY = 32 + (saltoPx || 0);
+        return {
+            url: ICONO_NUEVO.url,
+            scaledSize: ICONO_NUEVO.scaledSize,
+            anchor: new google.maps.Point(16, anclaY)
+        };
+    }
+
+    // Salta el pin rojo de un punto a otro (arco + rebote al llegar). Si pulsas otra vez, cancela el salto anterior.
+    function animarSaltoMarcador(marcador, destino) {
+        var origen = marcador.getPosition();
+        if (!origen) {
+            marcador.setIcon(iconoNuevo(0));
+            marcador.setPosition(destino);
+            marcador.setAnimation(google.maps.Animation.DROP);
+            return;
+        }
+        var lat0 = origen.lat();
+        var lng0 = origen.lng();
+        var dLat = destino.lat - lat0;
+        var dLng = destino.lng - lng0;
+        if (Math.abs(dLat) < 1e-7 && Math.abs(dLng) < 1e-7) {
+            marcador.setAnimation(google.maps.Animation.BOUNCE);
+            setTimeout(function () { if (marcador.getAnimation() === google.maps.Animation.BOUNCE) marcador.setAnimation(null); }, 700);
+            return;
+        }
+        var id = ++saltoId;
+        var duracion = 700;
+        var inicio = null;
+        marcador.setAnimation(null);
+
+        function cuadro(ahora) {
+            if (id !== saltoId) return;
+            if (inicio === null) inicio = ahora;
+            var t = Math.min(1, (ahora - inicio) / duracion);
+            // Acelera al salir y frena al llegar.
+            var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            // Arco: el pin se eleva a mitad de camino (ancla más abajo = se ve más arriba).
+            var altura = Math.sin(Math.PI * t) * 48;
+            marcador.setIcon(iconoNuevo(altura));
+            marcador.setPosition({ lat: lat0 + dLat * e, lng: lng0 + dLng * e });
+            if (t < 1) {
+                requestAnimationFrame(cuadro);
+                return;
+            }
+            marcador.setIcon(iconoNuevo(0));
+            marcador.setPosition(destino);
+            marcador.setAnimation(google.maps.Animation.BOUNCE);
+            setTimeout(function () {
+                if (id === saltoId && marcador.getAnimation() === google.maps.Animation.BOUNCE) marcador.setAnimation(null);
+            }, 650);
+        }
+        requestAnimationFrame(cuadro);
+    }
 
     function mostrarError(texto) {
         errorCaja.textContent = texto;
@@ -155,13 +220,28 @@
         if (!mapa) return;
         var posicion = { lat: lat, lng: lng };
         if (!marcadorNuevo) {
-            marcadorNuevo = new google.maps.Marker({ map: mapa, position: posicion, draggable: true, title: 'Nuevo sitio', animation: google.maps.Animation.DROP });
+            marcadorNuevo = new google.maps.Marker({
+                map: mapa,
+                position: posicion,
+                draggable: true,
+                title: 'Nuevo sitio',
+                icon: iconoNuevo(0),
+                animation: google.maps.Animation.DROP
+            });
             marcadorNuevo.addListener('dragend', function () {
+                saltoId += 1;
+                marcadorNuevo.setAnimation(null);
+                marcadorNuevo.setIcon(iconoNuevo(0));
                 var p = marcadorNuevo.getPosition();
                 ponerCoordenadas(p.lat(), p.lng());
             });
+            marcadorNuevo.addListener('dragstart', function () {
+                saltoId += 1;
+                marcadorNuevo.setAnimation(null);
+                marcadorNuevo.setIcon(iconoNuevo(0));
+            });
         } else {
-            marcadorNuevo.setPosition(posicion);
+            animarSaltoMarcador(marcadorNuevo, posicion);
         }
         if (centrar) mapa.panTo(posicion);
     }
