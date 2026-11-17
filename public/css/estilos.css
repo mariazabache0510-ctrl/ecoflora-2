@@ -65,8 +65,7 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
 :focus-visible { outline: 3px solid rgba(82, 183, 136, 0.7); outline-offset: 3px; }
 
 /* ---------- Fondo vivo: jardín ---------- */
-/* inset negativo: el jardín sigue cubriendo si el sistema hace un rebote de scroll. */
-.jardin { position: fixed; inset: -30vmax; z-index: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; --sy: 0; }
+.jardin { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; --sy: 0; }
 .jardin-cielo { position: absolute; inset: 0; background: linear-gradient(180deg, #f6fcf7 0%, #e6f6ea 46%, #d3eedb 100%); }
 .jardin-brillo { position: absolute; width: 62vmax; height: 62vmax; border-radius: 50%; opacity: 0.6; will-change: transform; }
 .jardin-brillo-a {
@@ -121,15 +120,6 @@ main { animation: pagina-entra 0.7s var(--curva) backwards; min-height: 60vh; pa
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.09);
     transition: box-shadow 0.35s, background 0.35s;
-}
-/* Cubre cualquier hueco encima del navbar al rebotar el scroll (sticky a veces “salta”). */
-.nav-eco::before {
-    content: '';
-    position: absolute;
-    left: 0; right: 0; bottom: 100%;
-    height: 50vmax;
-    background: #1b4332;
-    pointer-events: none;
 }
 .nav-eco .navbar { padding: 0.85rem 0; transition: padding 0.3s var(--curva); }
 .nav-eco.compacta { box-shadow: 0 12px 32px rgba(10, 35, 25, 0.3); }
@@ -797,22 +787,13 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 
 /* ---------- Pie de página ---------- */
 .pie-eco { position: relative; margin-top: 4rem; color: rgba(255, 255, 255, 0.82); }
-/* Cubre el hueco debajo del footer al llegar al final del scroll. */
-.pie-eco::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0; top: 100%;
-    height: 50vmax;
-    background: #12301f;
-    pointer-events: none;
-}
 .pie-ola { position: relative; height: 70px; overflow: hidden; margin-bottom: -2px; }
 .pie-ola svg { position: absolute; left: 0; bottom: 0; width: 200%; height: 100%; }
 .pie-ola svg:first-child { animation: ola 22s linear infinite; }
 .pie-ola svg:last-child { animation: ola 15s linear infinite reverse; }
 .ola-1 { fill: rgba(45, 106, 79, 0.55); }
 .ola-2 { fill: #1b4332; }
-.pie-cuerpo { background: linear-gradient(180deg, #1b4332, #12301f); padding: 1.5rem 0 1.2rem; }
+.pie-cuerpo { background: linear-gradient(180deg, #1b4332, #12301f); padding: 1.25rem 0 1rem; }
 .marca-pie .marca-nombre-pie { font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.6rem; color: var(--crema); line-height: 1; }
 .marca-pie .marca-texto { overflow: visible; padding-top: 0; margin-top: 0; }
 .marca-pie .marca-texto::after { display: none; }
@@ -828,7 +809,7 @@ button.chip-filtro { font-family: inherit; cursor: pointer; }
 .pie-contacto a:hover, .pie-contacto a:focus-visible { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 .pie-icono { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: rgba(255, 255, 255, 0.1); color: #95d5b2; transition: transform 0.4s var(--curva), background 0.3s, color 0.3s; }
 .pie-contacto li:hover .pie-icono { transform: rotate(-10deg) scale(1.12); background: #95d5b2; color: var(--verde-oscuro); }
-.pie-final { display: flex; justify-content: space-between; align-items: center; margin-top: 1.8rem; padding-top: 1.1rem; border-top: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.6); }
+.pie-final { display: flex; justify-content: space-between; align-items: center; margin-top: 1.1rem; padding-top: 0.85rem; border-top: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.6); }
 .pie-subir { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; text-decoration: none; background: rgba(255, 255, 255, 0.12); transition: transform 0.4s var(--curva), background 0.3s, color 0.3s; }
 .pie-subir:hover { color: var(--verde-oscuro); background: #95d5b2; transform: translateY(-5px); }
 
