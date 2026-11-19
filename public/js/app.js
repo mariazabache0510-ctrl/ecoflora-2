@@ -914,24 +914,31 @@
             if (volver && window.history.length > 1) { e.preventDefault(); window.history.back(); }
         });
 
-        // Bloquea atajos habituales de “ver código” / DevTools (Windows Ctrl y Mac Cmd).
-        document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-        document.addEventListener('keydown', function (e) {
-            var tecla = (e.key || '').toLowerCase();
+        // Bloquea atajos de “ver código” / DevTools: Ctrl/Cmd+U, Option+Cmd+U (Mac), F12, etc.
+        function bloquearAtajoFuente(e) {
+            var tecla = String(e.key || e.code || '').toLowerCase();
+            var codigo = e.keyCode || e.which || 0;
+            var esU = tecla === 'u' || tecla === 'keyu' || codigo === 85;
+            var esS = tecla === 's' || tecla === 'keys' || codigo === 83;
             var ctrl = e.ctrlKey || e.metaKey;
-            if (tecla === 'f12') {
+            if (tecla === 'f12' || codigo === 123) {
                 e.preventDefault();
+                e.stopPropagation();
                 return;
             }
-            if (!ctrl) return;
-            if (tecla === 'u' || tecla === 's') {
+            if (ctrl && (esU || esS || (e.altKey && esU))) {
                 e.preventDefault();
+                e.stopPropagation();
                 return;
             }
-            if (e.shiftKey && (tecla === 'i' || tecla === 'j' || tecla === 'c' || tecla === 'k')) {
+            if (ctrl && e.shiftKey && (tecla === 'i' || tecla === 'j' || tecla === 'c' || tecla === 'k' || tecla === 'keyi' || tecla === 'keyj' || tecla === 'keyc' || tecla === 'keyk')) {
                 e.preventDefault();
+                e.stopPropagation();
             }
-        }, true);
+        }
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); }, true);
+        document.addEventListener('keydown', bloquearAtajoFuente, true);
+        document.addEventListener('keyup', bloquearAtajoFuente, true);
 
         var RESPALDO = '/img/plantas/_default.svg';
         function usarRespaldo(imagen) {
