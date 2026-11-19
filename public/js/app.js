@@ -914,6 +914,25 @@
             if (volver && window.history.length > 1) { e.preventDefault(); window.history.back(); }
         });
 
+        // Bloquea atajos habituales de “ver código” / DevTools (Windows Ctrl y Mac Cmd).
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        document.addEventListener('keydown', function (e) {
+            var tecla = (e.key || '').toLowerCase();
+            var ctrl = e.ctrlKey || e.metaKey;
+            if (tecla === 'f12') {
+                e.preventDefault();
+                return;
+            }
+            if (!ctrl) return;
+            if (tecla === 'u' || tecla === 's') {
+                e.preventDefault();
+                return;
+            }
+            if (e.shiftKey && (tecla === 'i' || tecla === 'j' || tecla === 'c' || tecla === 'k')) {
+                e.preventDefault();
+            }
+        }, true);
+
         var RESPALDO = '/img/plantas/_default.svg';
         function usarRespaldo(imagen) {
             if (imagen.getAttribute('data-respaldo-usado')) return;
