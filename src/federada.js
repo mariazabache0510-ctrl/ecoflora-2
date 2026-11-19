@@ -7,19 +7,45 @@
 // necesita el sistema de información: clientes y productos a Postgres, facturas a MySQL. Desde Postgres, la vista
 // v_ventas_federada une las dos bases en una sola consulta (cliente + producto en Postgres, factura en MySQL).
 //
-// Si PG_URL o MYSQL_URL no están definidas (por ejemplo en Render), todo esto queda apagado y la tienda no cambia.
+// Si no hay URLs (ni variables sueltas de host/clave), todo esto queda apagado y la tienda no cambia.
 // Y si un servidor falla, el pedido igual se guarda: el error se anota en el log y "Sincronizar ahora" lo repone.
 
 const { Pool } = require('pg');
 const mysql = require('mysql2/promise');
 
-const TIEMPO_CONEXION_MS = 4000;
+const TIEMPO_CONEXION_MS = 8000;
 
 let pgPool = null;
 let mysqlPool = null;
 
-function pgUrl() { return String(process.env.PG_URL || '').trim(); }
-function mysqlUrl() { return String(process.env.MYSQL_URL || '').trim(); }
+function codificar(valor) {
+  return encodeURIComponent(String(valor));
+}
+
+// Acepta PG_URL completa (local) o piezas PGHOST/PGPASSWORD/... (Render private services).
+function pgUrl() {
+  const directa = String(process.env.PG_URL || '').trim();
+  if (directa) return directa;
+  const host = String(process.env.PGHOST || '').trim();
+  const password = String(process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD || process.env.PG_PASSWORD || '').trim();
+  if (!host || !password) return '';
+  const user = String(process.env.PGUSER || 'ecoflora').trim() || 'ecoflora';
+  const port = String(process.env.PGPORT || '5432').trim() || '5432';
+  const database = String(process.env.PGDATABASE || 'ecoflora_pg').trim() || 'ecoflora_pg';
+  return `postgres://${codificar(user)}:${codificar(password)}@${host}:${port}/${database}`;
+}
+
+function mysqlUrl() {
+  const directa = String(process.env.MYSQL_URL || '').trim();
+  if (directa) return directa;
+  const host = String(process.env.MYSQL_HOST || '').trim();
+  const password = String(process.env.MYSQL_PASSWORD || process.env.MYSQL_APP_PASSWORD || '').trim();
+  if (!host || !password) return '';
+  const user = String(process.env.MYSQL_USER || 'ecoflora_app').trim() || 'ecoflora_app';
+  const port = String(process.env.MYSQL_PORT || '3306').trim() || '3306';
+  const database = String(process.env.MYSQL_DATABASE || 'ecoflora_facturas').trim() || 'ecoflora_facturas';
+  return `mysql://${codificar(user)}:${codificar(password)}@${host}:${port}/${database}`;
+}
 
 function habilitada() {
   return Boolean(pgUrl() && mysqlUrl());

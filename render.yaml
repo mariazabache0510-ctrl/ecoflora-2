@@ -1,20 +1,37 @@
+# EcoFlora en Render: tienda (MongoDB Atlas) + base federada (Postgres + MySQL con mysql_fdw).
+# La federada usa dos private services Starter en Ohio (el plan Free no puede hospedarlos).
+# Tras aprobar el Blueprint, confirma en el Dashboard los secretos sync:false (Mongo, Google, etc.).
+
+envVarGroups:
+  - name: ecoflora-federada
+    envVars:
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+      - key: MYSQL_PASSWORD
+        generateValue: true
+      - key: FDW_MYSQL_PASSWORD
+        generateValue: true
+
 services:
   - type: web
-    name: ecoflora
+    name: ecoflora-node
     runtime: node
     plan: free
+    region: ohio
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: MONGODB_URI
-        sync: false
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: MONGODB_URI
+        sync: false
       - key: ADMIN_INITIAL_PASSWORD
         sync: false
       - key: RESEND_API_KEY
@@ -25,11 +42,79 @@ services:
         sync: false
       - key: FACE_MATCH_THRESHOLD
         value: "0.5"
-      # Parcial final. Los valores se escriben en Render > Environment (nunca aquí).
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: COCKROACH_URL
         sync: false
-      # PG_URL y MYSQL_URL NO se definen en Render: la base federada (Docker) es solo local y allí queda apagada.
+      - fromGroup: ecoflora-federada
+      - key: PGHOST
+        fromService:
+          name: ecoflora-pg
+          type: pserv
+          property: host
+      - key: PGPORT
+        value: "5432"
+      - key: PGUSER
+        value: ecoflora
+      - key: PGDATABASE
+        value: ecoflora_pg
+      - key: MYSQL_HOST
+        fromService:
+          name: ecoflora-mysql
+          type: pserv
+          property: host
+      - key: MYSQL_PORT
+        value: "3306"
+      - key: MYSQL_USER
+        value: ecoflora_app
+      - key: MYSQL_DATABASE
+        value: ecoflora_facturas
+
+  - type: pserv
+    name: ecoflora-mysql
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerfilePath: ./docker/mysql/Dockerfile
+    dockerContext: ./docker
+    disk:
+      name: ecoflora-mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 1
+    envVars:
+      - fromGroup: ecoflora-federada
+      - key: MYSQL_DATABASE
+        value: ecoflora_facturas
+      - key: MYSQL_USER
+        value: ecoflora_app
+      - key: FDW_MYSQL_USER
+        value: fdw_postgres
+
+  - type: pserv
+    name: ecoflora-pg
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerfilePath: ./docker/postgres/Dockerfile
+    dockerContext: ./docker
+    disk:
+      name: ecoflora-pg-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+    envVars:
+      - fromGroup: ecoflora-federada
+      - key: POSTGRES_USER
+        value: ecoflora
+      - key: POSTGRES_DB
+        value: ecoflora_pg
+      - key: FDW_MYSQL_HOST
+        fromService:
+          name: ecoflora-mysql
+          type: pserv
+          property: host
+      - key: FDW_MYSQL_PORT
+        value: "3306"
+      - key: FDW_MYSQL_USER
+        value: fdw_postgres

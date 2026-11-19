@@ -11,7 +11,9 @@ name: ecoflora-federada
 
 services:
   mysql:
-    image: mysql:8.0
+    build:
+      context: .
+      dockerfile: mysql/Dockerfile
     container_name: ecoflora_mysql
     restart: unless-stopped
     environment:
@@ -19,6 +21,7 @@ services:
       MYSQL_DATABASE: ecoflora_facturas
       MYSQL_USER: ecoflora_app
       MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?define MYSQL_APP_PASSWORD en docker/.env}
+      MYSQL_APP_PASSWORD: ${MYSQL_APP_PASSWORD:?define MYSQL_APP_PASSWORD en docker/.env}
       # Usuario que usa el servidor Postgres (mysql_fdw) para leer la tabla factura.
       FDW_MYSQL_USER: fdw_postgres
       FDW_MYSQL_PASSWORD: ${FDW_MYSQL_PASSWORD:?define FDW_MYSQL_PASSWORD en docker/.env}
@@ -27,7 +30,6 @@ services:
       - "127.0.0.1:${MYSQL_PORT:-3307}:3306"
     volumes:
       - mysql_datos:/var/lib/mysql
-      - ./sql/mysql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 5s
@@ -35,7 +37,9 @@ services:
       retries: 30
 
   postgres:
-    build: ./postgres
+    build:
+      context: .
+      dockerfile: postgres/Dockerfile
     container_name: ecoflora_postgres
     restart: unless-stopped
     depends_on:
@@ -54,9 +58,6 @@ services:
       - "127.0.0.1:${PG_PORT:-5433}:5432"
     volumes:
       - pg_datos:/var/lib/postgresql/data
-      - ./sql/postgres:/docker-entrypoint-initdb.d:ro
-      # La federación se ejecuta desde 02-federacion.sh (necesita variables), por eso no está en la carpeta de arranque.
-      - ./sql/federacion.sql:/federacion.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ecoflora -d ecoflora_pg"]
       interval: 5s

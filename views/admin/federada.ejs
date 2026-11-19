@@ -27,7 +27,7 @@
                 <li>En el <code>.env</code> de la tienda define <code>PG_URL</code> y <code>MYSQL_URL</code> (ejemplos en <code>.env.example</code>).</li>
                 <li>Reinicia la tienda y vuelve a esta pantalla.</li>
             </ol>
-            <p class="mb-0 text-muted">En el sitio publicado en Render esta parte queda apagada a propósito: los dos servidores son locales y la tienda sigue funcionando con MongoDB.</p>
+            <p class="mb-0 text-muted">Si estás en el sitio publicado y sigue apagada, faltan los servidores Postgres/MySQL en Render (o las variables <code>PGHOST</code> / <code>MYSQL_HOST</code>). La tienda en MongoDB sigue funcionando igual.</p>
         </div>
     <% } else { %>
         <div class="row g-4 mb-4">

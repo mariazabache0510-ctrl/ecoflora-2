@@ -277,10 +277,11 @@ El proyecto PHP anterior quedó en la carpeta legacy/ y no se ejecuta.
    - Carga inicial de lo que ya existe en MongoDB (se puede repetir sin
      duplicar): node scripts/federada-sync.js  o el botón "Sincronizar ahora"
      de /admin/federada (menú del admin > Base federada).
-   - En Render esta parte queda APAGADA a propósito (los servidores Docker son
-     locales); la tienda sigue funcionando con MongoDB.
-   - Variables (solo en tu .env local): PG_URL y MYSQL_URL (ejemplos en
-     .env.example).
+   - En Render se enciende con dos private services (ecoflora-pg + ecoflora-mysql)
+     en render.yaml (plan Starter + disco de 1 GB c/u). Sin ellos la parte queda
+     apagada y la tienda sigue solo con MongoDB.
+   - Variables locales: PG_URL y MYSQL_URL (ejemplos en .env.example).
+     En Render: PGHOST/POSTGRES_PASSWORD y MYSQL_HOST/MYSQL_PASSWORD (Blueprint).
 
    PARTE 3 - Sitios de interés con Google Maps y CockroachDB
    - Página /sitios (requiere iniciar sesión; menú de cuenta > Sitios de
